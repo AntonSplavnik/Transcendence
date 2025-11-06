@@ -1,19 +1,468 @@
 <!DOCTYPE html>
-<html lang="end" class="h-full bg-gray-900">
-
+<html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title >POWNG</title>
-	<link href="./styles.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POWNG - Retro Future</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel for in-browser TypeScript execution -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Google Fonts: Orbitron (Sci-Fi) and Monoton (Retro Header) -->
+    <link href="https://fonts.bunny.net/css2?family=Orbitron:wght@400;700;900&family=Monoton&display=swap" rel="stylesheet">
+
+    <!-- non google fonts: Synthwave -->
+    <!-- Galactic Storm, 
+    'Galactic Storm 3D'
+    'Galactic Storm Gradient'
+    'Galactic Storm Halftone'
+    'Galactic Storm Laser'
+    'Galactic Storm 3D Italic'
+    'Galactic Storm Condensed'
+    'Galactic Storm Condensed Italic'
+    'Galactic Storm Expanded'
+    'Galactic Storm Expanded Italic'
+    'Galactic Storm Gradient Italic'
+    'Galactic Storm Halftone Italic'
+    'Galactic Storm Italic'
+    'Galactic Storm Laser Italic'
+    'Galactic Storm Leftalic'
+    'Galactic Storm Outline'
+    'Galactic Storm Outline Italic'
+    'Galactic Storm Super-Italic' -->
+    <link href="https://fonts.cdnfonts.com/css/galactic-storm" rel="stylesheet">
+    <!-- 'CassandraTwo', sans-serif;
+          'KassandrasMonogramme', sans-serif; -->
+    <link href="https://fonts.cdnfonts.com/css/cassandra" rel="stylesheet">
+    <!-- 'Bigger', sans-serif;
+         'Bigger Book', sans-serif; -->
+    <link href="https://fonts.cdnfonts.com/css/bigger" rel="stylesheet">
+                
+                
+                
+
+    <!-- Tailwind Config for Retro Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        <!-- sans: ['Orbitron', 'sans-serif'], -->
+                        sans: ['Galactic Storm', 'sans-serif'],
+                        <!-- retro: ['Monoton', 'cursive'], -->
+                        retro: ['Galactic Storm Laser', 'cursive'],
+                        headline: ['Monoton', 'cursive']
+                    },
+                    colors: {
+                        retro: {
+                            dark: '#090014',
+                            purple: '#3C1266',
+                            pink: '#FF00FF',
+                            blue: '#00FFFF',
+                            yellow: '#FFD700',
+                            orange: '#FF4500'
+                        }
+                    },
+                    boxShadow: {
+                        'retro-pink': '0 0 15px #FF00FF, inset 0 0 10px #FF00FF',
+                        'retro-blue': '0 0 15px #00FFFF, inset 0 0 10px #00FFFF',
+                        'retro-combo': '0 0 20px #FF00FF, 0 0 40px #00FFFF',
+                    },
+                    backgroundImage: {
+                        'retro-gradient': 'linear-gradient(to bottom right, #3C1266, #FF00FF, #FF4500)',
+                        'terminal-scanlines': 'repeating-linear-gradient(0deg, rgba(0,0,0,0.3) 0px, rgba(0,0,0,0.3) 2px, transparent 2px, transparent 4px)'
+                    },
+                    animation: {
+                        'text-flicker': 'flickerAction 2s linear forwards',
+                    },
+                    keyframes: {
+                        flickerAction: {
+                            '0%': { opacity: 0, textShadow: 'none' },
+                            '5%': { opacity: 0.5, textShadow: 'none' },
+                            '10%': { opacity: 0, textShadow: 'none' },
+                            '15%': { opacity: 0.8, textShadow: '0 0 10px #FF00FF' },
+                            '20%': { opacity: 0.2, textShadow: 'none' },
+                            '30%': { opacity: 1, textShadow: '0 0 20px #FF00FF, 0 0 40px #00FFFF' },
+                            '35%': { opacity: 0.6, textShadow: '0 0 10px #FF00FF' },
+                            '50%': { opacity: 1, textShadow: '0 0 20px #FF00FF, 0 0 40px #00FFFF' },
+                            '70%': { opacity: 0.9, textShadow: '0 0 15px #FF00FF' },
+                            '100%': { opacity: 1, textShadow: '0 0 30px #FF00FF, 0 0 60px #00FFFF' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #090014;
+            overflow-x: hidden;
+            perspective: 1000px; /* For the grid perspective */
+        }
+
+        /* Retro Synthwave Grid Background */
+        body::before {
+            content: "";
+            position: fixed;
+            bottom: -30%;
+            left: -50%;
+            width: 200%;
+            height: 80%;
+            background-image: 
+                linear-gradient(rgba(255, 0, 255, 0.4) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.4) 2px, transparent 2px);
+            background-size: 50px 50px, 50px 50px;
+            transform: rotateX(60deg);
+            box-shadow: 0 0 100px rgba(255, 0, 255, 0.5);
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        /* Horizon Glow */
+        body::after {
+            content: "";
+            position: fixed;
+            bottom: 30%;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to top, rgba(255, 0, 255, 0.6), transparent);
+            z-index: 1;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 50px; }
+        }
+        
+        /* CRT Overlay Effects (Kept subtle) */
+        .scanlines-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 1px, transparent 1px, transparent 3px);
+            pointer-events: none; z-index: 50;
+        }
+    </style>
 </head>
+<body class="text-white antialiased selection:bg-retro-pink selection:text-white font-sans">
 
-<body class="h-full">
-  <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-		<h1 class="text-3xl font-bold text-amber-200">Welcome to POWNG</h1>
-		<p class="mt-4 text-amber-100">the online browser based Pong Game</p>
-	</div>
-	<script src="./dist/main.js"></script>
+    <div class="scanlines-overlay"></div>
+
+    <!-- Main Application Container -->
+    <div id="app" class="min-h-screen flex flex-col items-center justify-center relative z-10 p-4">
+        <!-- Content will be injected here by TypeScript -->
+    </div>
+
+    <!-- TypeScript Application Logic -->
+    <script type="text/babel" data-presets="env, typescript">
+        
+        // --- Types & Interfaces ---
+        type ViewState = 'landing' | 'signin' | 'local' | 'tournament';
+
+        // --- State Management ---
+        class AppState {
+            _currentView: ViewState = 'landing';
+            _container: HTMLElement;
+
+            constructor(containerId: string) {
+                const el = document.getElementById(containerId);
+                if (!el) throw new Error("Root element not found");
+                this._container = el;
+                this.render();
+            }
+
+            setView(view: ViewState) {
+                this._currentView = view;
+                this.render();
+            }
+
+            // --- Rendering Logic ---
+            render() {
+                this._container.innerHTML = ''; // Clear current view
+                switch (this._currentView) {
+                    case 'landing': this.renderLanding(); break;
+                    case 'signin': this.renderSignIn(); break;
+                    case 'local': this.renderLocalGame(); break;
+                    case 'tournament': this.renderTournament(); break;
+                }
+            }
+
+            // --- View: Landing Page ---
+            renderLanding() {
+                const wrapper = document.createElement('div');
+                // Removed animate-float, added layout styles
+                wrapper.className = "flex flex-col items-center w-full max-w-lg space-y-16 mt-10 relative z-20";
+
+                // Title - POWNG with Flicker Animation
+                const titleWrapper = document.createElement('div');
+                titleWrapper.className = "relative";
+                
+                // Reflection effect for title
+                const reflection = document.createElement('h1');
+                reflection.className = "absolute top-full left-0 w-full text-6xl md:text-9xl font-headline text-center text-retro-pink opacity-30 blur-sm transform -scale-y-50 origin-top";
+                reflection.innerText = "POWNG";
+
+                const title = document.createElement('h1');
+                // Added animate-text-flicker, changed font to font-retro, updated colors
+                title.className = "animate-text-flicker text-7xl md:text-9xl font-headline text-transparent bg-clip-text bg-gradient-to-b from-retro-yellow via-retro-pink to-retro-purple tracking-widest text-center relative z-10";
+                title.innerText = "POWNG";
+                
+                titleWrapper.appendChild(title);
+                titleWrapper.appendChild(reflection);
+
+                // Menu Container style update
+                const menu = document.createElement('div');
+                menu.className = "w-full space-y-6 flex flex-col p-6 bg-retro-dark/60 border-4 border-retro-blue shadow-retro-blue rounded-xl backdrop-blur-sm";
+
+                // Buttons with new retro theme
+                menu.appendChild(this.createRetroButton("LOCAL SYSTEM", "blue", () => this.setView('local')));
+                menu.appendChild(this.createRetroButton("TOURNAMENT GRID", "pink", () => this.setView('tournament')));
+                menu.appendChild(this.createRetroButton("USER LOGIN", "yellow", () => this.setView('signin')));
+
+                wrapper.appendChild(titleWrapper);
+                wrapper.appendChild(menu);
+                this._container.appendChild(wrapper);
+            }
+
+            // --- View: Sign In ---
+            renderSignIn() {
+                const wrapper = document.createElement('div');
+                // Updated container to look like a retro terminal
+                wrapper.className = "w-full max-w-md p-1 rounded-2xl bg-gradient-to-br from-retro-pink to-retro-blue shadow-retro-combo relative z-20";
+
+                const innerContainer = document.createElement('div');
+                innerContainer.className = "w-full h-full bg-retro-dark p-8 rounded-xl bg-terminal-scanlines border-2 border-retro-blue/50";
+
+                // Back Button
+                innerContainer.appendChild(this.createBackButton());
+
+                // Header
+                const header = document.createElement('h2');
+                header.className = "text-4xl font-retro text-transparent bg-clip-text bg-gradient-to-r from-retro-blue to-retro-pink mb-10 text-center tracking-widest";
+                header.innerText = "ACCESS TERMINAL";
+                innerContainer.appendChild(header);
+
+                // Form
+                const form = document.createElement('form');
+                form.className = "space-y-8";
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    // Retro loading effect
+                    submitBtn.innerHTML = "<span class='animate-pulse'>CONNECTING TO MAINFRAME...</span>";
+                    setTimeout(() => this.setView('landing'), 1500);
+                };
+
+                // Inputs
+                form.appendChild(this.createRetroInput("username", "text", "ENTER CODENAME"));
+                form.appendChild(this.createRetroInput("password", "password", "ACCESS KEY"));
+
+                // Submit
+                const submitBtn = document.createElement('button');
+                submitBtn.type = "submit";
+                // Updated button style
+                submitBtn.className = "w-full py-4 bg-retro-pink/20 border-2 border-retro-pink text-retro-pink font-bold hover:bg-retro-pink hover:text-retro-dark transition-all duration-200 rounded-lg uppercase tracking-[0.2em] shadow-retro-pink text-xl font-retro";
+                submitBtn.innerText = "INITIATE LINK";
+
+                form.appendChild(submitBtn);
+                innerContainer.appendChild(form);
+
+                // Footer links
+                const footer = document.createElement('div');
+                footer.className = "mt-8 text-center text-xs text-retro-blue/70 font-mono";
+                footer.innerHTML = `Creating new ID // Recover Key`;
+                innerContainer.appendChild(footer);
+
+                wrapper.appendChild(innerContainer);
+                this._container.appendChild(wrapper);
+            }
+
+             // --- View: Local Play (Game Canvas) ---
+             renderLocalGame() {
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex flex-col items-center w-full max-w-4xl z-20 relative";
+
+                // Header with Back Button
+                const header = document.createElement('div');
+                header.className = "w-full flex justify-between items-end mb-6 border-b-2 border-retro-blue/30 pb-2";
+                header.appendChild(this.createBackButton());
+                
+                const title = document.createElement('h2');
+                title.className = "text-3xl font-retro text-retro-blue shadow-retro-blue";
+                title.innerText = "LOCAL_MATCH.exe";
+                header.appendChild(title);
+                
+                const spacer = document.createElement('div');
+                spacer.className = "w-8";
+                header.appendChild(spacer);
+
+                wrapper.appendChild(header);
+
+                // Canvas Container styled as retro screen
+                const canvasContainer = document.createElement('div');
+                canvasContainer.className = "relative p-2 rounded-xl bg-retro-dark border-4 border-retro-pink shadow-retro-combo";
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 450;
+                // Added scanline background to canvas itself
+                canvas.className = "bg-retro-dark bg-terminal-scanlines block w-full max-w-full h-auto rounded-lg border border-retro-blue/50";
+                
+                const instructions = document.createElement('div');
+                instructions.className = "mt-6 text-retro-blue font-mono text-sm text-center bg-retro-dark/80 p-2 border border-retro-blue rounded";
+                instructions.innerHTML = "INPUTS: [P1: W/S] :: [P2: UP/DOWN]";
+
+                canvasContainer.appendChild(canvas);
+                wrapper.appendChild(canvasContainer);
+                wrapper.appendChild(instructions);
+                this._container.appendChild(wrapper);
+
+                requestAnimationFrame(() => this.initGameLoop(canvas));
+            }
+
+            // --- View: Tournament (Styled but static for now) ---
+            renderTournament() {
+                const wrapper = document.createElement('div');
+                wrapper.className = "w-full max-w-5xl p-8 bg-retro-dark/80 border-4 border-retro-green rounded-xl shadow-retro-green z-20 relative bg-terminal-scanlines";
+
+                const nav = document.createElement('div');
+                nav.className = "flex items-center mb-10 pb-4 border-b-2 border-retro-green/50";
+                nav.appendChild(this.createBackButton());
+                const title = document.createElement('h2');
+                title.innerText = "TOURNAMENT_BRACKET";
+                title.className = "ml-6 text-4xl text-retro-green font-retro tracking-widest";
+                nav.appendChild(title);
+                wrapper.appendChild(nav);
+
+                wrapper.innerHTML += '<div class="text-center text-retro-green/70 font-mono animate-pulse">AWAITING DATA STREAM...</div>';
+                this._container.appendChild(wrapper);
+            }
+
+            // --- Helpers ---
+
+            // New Helper for Retro Buttons
+            createRetroButton(text: string, colorName: 'blue' | 'pink' | 'yellow', onClick: () => void): HTMLButtonElement {
+                const btn = document.createElement('button');
+                
+                const colorMap = {
+                    blue: { border: 'border-retro-blue', text: 'text-retro-blue', shadow: 'hover:shadow-retro-blue', bg: 'hover:bg-retro-blue' },
+                    pink: { border: 'border-retro-pink', text: 'text-retro-pink', shadow: 'hover:shadow-retro-pink', bg: 'hover:bg-retro-pink' },
+                    yellow: { border: 'border-retro-yellow', text: 'text-retro-yellow', shadow: 'hover:shadow-retro-yellow', bg: 'hover:bg-retro-yellow' }
+                }[colorName];
+
+                btn.className = `
+                    group relative w-full py-4 px-6
+                    border-4 ${colorMap.border} bg-retro-dark/50
+                    text-2xl font-retro tracking-[0.15em] ${colorMap.text}
+                    ${colorMap.shadow} transition-all duration-150 ease-out
+                    hover:scale-[1.02] active:scale-[0.98]
+                    clip-path-polygon-[0_0,_100%_0,_95%_100%,_5%_100%]
+                `;
+                
+                btn.innerHTML = `
+                    <span class="absolute inset-0 w-full h-full bg-${colorName}-500 opacity-0 group-hover:opacity-20 transition-opacity"></span>
+                    <span class="relative z-10 group-hover:text-retro-dark transition-colors">${text}</span>
+                    <div class="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-transparent via-${colorMap.text.replace('text-', '')} to-transparent opacity-50"></div>
+                `;
+                
+                btn.onclick = onClick;
+                return btn;
+            }
+
+            // New Helper for Retro Inputs
+            createRetroInput(id: string, type: string, placeholder: string): HTMLElement {
+                const inputContainer = document.createElement('div');
+                inputContainer.className = "relative group";
+                
+                const input = document.createElement('input');
+                input.type = type;
+                input.id = id;
+                input.placeholder = " "; // Hide default placeholder for custom label effect
+                input.className = `
+                    peer w-full bg-retro-dark border-b-4 border-retro-blue/50 px-4 py-4 
+                    text-retro-blue font-mono text-lg focus:border-retro-pink focus:outline-none 
+                    transition-all rounded-t-lg placeholder-transparent
+                `;
+
+                const label = document.createElement('label');
+                label.className = `
+                    absolute left-4 -top-3 text-sm text-retro-blue/70 bg-retro-dark px-2 font-mono
+                    transition-all peer-placeholder-shown:text-lg peer-placeholder-shown:text-retro-blue/50 
+                    peer-placeholder-shown:top-4 peer-focus:-top-3 peer-focus:text-sm peer-focus:text-retro-pink
+                `;
+                label.innerText = placeholder;
+
+                inputContainer.appendChild(input);
+                inputContainer.appendChild(label);
+                // Return the container here, the calling function needs to append the container
+                return inputContainer; 
+            }
+
+            createBackButton(): HTMLButtonElement {
+                const btn = document.createElement('button');
+                btn.innerHTML = "< <span class='underline'>BACK</span>";
+                btn.className = "text-retro-blue/60 hover:text-retro-pink transition-colors font-mono text-sm tracking-widest mb-4 uppercase";
+                btn.onclick = () => this.setView('landing');
+                return btn;
+            }
+
+             // --- Simple Game Engine (Updated colors) ---
+            initGameLoop(canvas: HTMLCanvasElement) {
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Game Constants & State
+                const paddleHeight = 80; const paddleWidth = 12; const ballSize = 8;
+                let ballX = canvas.width / 2; let ballY = canvas.height / 2;
+                let ballSpeedX = 6; let ballSpeedY = 6;
+                let paddle1Y = (canvas.height - paddleHeight) / 2;
+                let paddle2Y = (canvas.height - paddleHeight) / 2;
+
+                const keys: {[key: string]: boolean} = {};
+                window.onkeydown = (e) => keys[e.key] = true;
+                window.onkeyup = (e) => keys[e.key] = false;
+
+                const loop = () => {
+                    if (this._currentView !== 'local') return; 
+                    // Logic (Simplified AI for P2 if keys not pressed)
+                    if (keys['w'] && paddle1Y > 0) paddle1Y -= 8;
+                    if (keys['s'] && paddle1Y < canvas.height - paddleHeight) paddle1Y += 8;
+                    if (keys['ArrowUp'] && paddle2Y > 0) paddle2Y -= 8; else if (ballY < paddle2Y + paddleHeight/2 && paddle2Y > 0) paddle2Y -= 4;
+                    if (keys['ArrowDown'] && paddle2Y < canvas.height - paddleHeight) paddle2Y += 8; else if (ballY > paddle2Y + paddleHeight/2 && paddle2Y < canvas.height - paddleHeight) paddle2Y += 4;
+
+                    ballX += ballSpeedX; ballY += ballSpeedY;
+                    if (ballY < 0 || ballY > canvas.height) ballSpeedY = -ballSpeedY;
+                    if ((ballX < paddleWidth + 20 && ballY > paddle1Y && ballY < paddle1Y + paddleHeight) || (ballX > canvas.width - paddleWidth - 20 && ballY > paddle2Y && ballY < paddle2Y + paddleHeight)) ballSpeedX = -ballSpeedX;
+                    if (ballX < 0 || ballX > canvas.width) { ballX = canvas.width / 2; ballY = canvas.height / 2; ballSpeedX = -ballSpeedX; }
+
+                    // Render (Retro Style)
+                    ctx.clearRect(0,0,canvas.width, canvas.height); // Use clearRect for transparency
+
+                    // Net
+                    ctx.strokeStyle = '#3C1266'; ctx.setLineDash([5, 10]); ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height); ctx.stroke(); ctx.setLineDash([]);
+
+                    // Paddles
+                    ctx.shadowBlur = 20; ctx.shadowColor = '#00FFFF'; ctx.fillStyle = '#00FFFF';
+                    ctx.fillRect(15, paddle1Y, paddleWidth, paddleHeight);
+                    ctx.shadowColor = '#FF00FF'; ctx.fillStyle = '#FF00FF';
+                    ctx.fillRect(canvas.width - 15 - paddleWidth, paddle2Y, paddleWidth, paddleHeight);
+
+                    // Ball
+                    ctx.shadowColor = '#FFD700'; ctx.fillStyle = '#FFD700';
+                    ctx.beginPath(); ctx.arc(ballX, ballY, ballSize, 0, Math.PI * 2); ctx.fill();
+                    requestAnimationFrame(loop);
+                };
+                requestAnimationFrame(loop);
+            }
+        }
+
+        // Initialize App
+        const app = new AppState('app');
+
+    </script>
 </body>
-
 </html>

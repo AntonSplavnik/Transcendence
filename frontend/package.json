@@ -10,9 +10,13 @@
   "main": "public/index.html",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.ts",
-    "build": "tailwindcss -i src/styles/input.css -o public/styles.css && tsc",
-    "watch": "tsc -w"
+    "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/styles.css",
+    "build:ts": "tsc",
+    "build": "npm run build:css && npm run build:ts",
+    "watch:css": "tailwindcss -i src/styles/input.css -o public/styles.css --watch",
+    "watch:ts": "tsc --watch",
+    "serve": "npx http-server public -p 8080",
+    "dev": "npm run watch:css & npm run watch:ts & npm run serve"
   },
   "author": "",
   "license": "ISC"
