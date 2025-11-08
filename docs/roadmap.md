@@ -38,6 +38,7 @@ Kick-off planning for the ft_transcendence project following the 42 subject requ
 
 - [ ] **Microservices Backend (Major):** Modular backend architecture
 - [ ] **Pong Game Core (Mandatory):** Local play, matchmaking, alias registration (*Mandatory*)
+- [ ] **Server-Side Pong & API (Major):** Server-side game, API endpoints
 - [ ] **Backend Framework: Fastify/Node.js (Major)**
 - [ ] **Database: SQLite (Minor)**
 - [ ] **Frontend: Tailwind CSS + Typescript (Minor)**
@@ -68,7 +69,6 @@ Kick-off planning for the ft_transcendence project following the 42 subject requ
 
 #### Modules we don't want to do
 
-- [ ] **Server-Side Pong & API (Major):** Server-side game, API endpoints
 - [ ] **Monitoring (Prometheus/Grafana) (Minor):** Metrics, dashboards, alerts
 - [ ] **CLI Pong vs Web Users (Major):** CLI client, API integration, cross-platform play
 - [ ] **New Game + Matchmaking (Major):** Distinct from Pong, user history, matchmaking
