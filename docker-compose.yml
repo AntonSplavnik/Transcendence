@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # API Gateway - Entry point for all requests
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: transcendence_gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - AUTH_SERVICE_URL=http://auth:3001
+      - GAME_SERVICE_URL=http://game:3002
+    volumes:
+      - ./services/gateway:/app
+      - /app/node_modules
+    depends_on:
+      - auth
+      - game
+    networks:
+      - transcendence_network
+
+  # Authentication Service
+  auth:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: transcendence_auth
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=/data/transcendence.db
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+    volumes:
+      - ./services/auth:/app
+      - /app/node_modules
+      - app_data:/data
+    networks:
+      - transcendence_network
+
+  # Game Engine Service
+  game:
+    build:
+      context: ./services/game
+      dockerfile: Dockerfile
+    container_name: transcendence_game
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=/data/transcendence.db
+    volumes:
+      - ./services/game:/app
+      - /app/node_modules
+      - app_data:/data
+    networks:
+      - transcendence_network
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: transcendence_frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - gateway
+    networks:
+      - transcendence_network
+
+networks:
+  transcendence_network:
+    driver: bridge
+
+volumes:
+  app_data:

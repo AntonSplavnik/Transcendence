@@ -1,0 +1,17 @@
+{
+  "name": "transcendence-game",
+  "version": "1.0.0",
+  "description": "Game engine service for Transcendence Pong",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "fastify": "^4.25.0",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/websocket": "^9.0.0",
+    "better-sqlite3": "^9.2.2"
+  }
+}
