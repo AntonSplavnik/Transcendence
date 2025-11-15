@@ -1,0 +1,43 @@
+services:
+  rabbit:
+    image: rabbitmq:4.2-alpine
+    hostname: transcendence-rabbit
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 8
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  auth-service:
+    build:
+      context: ./auth-service
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      RABBITMQ_URL: amqp://auth_user:auth_pass@rabbit:5672
+    volumes:
+      - auth_service_data:/data
+
+  caddy:
+    build:
+      context: ./frontend
+    depends_on:
+      - auth-service
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  rabbitmq_data:
+  auth_service_data:
+  caddy_data:
+  caddy_config:

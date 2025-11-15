@@ -1,0 +1,16 @@
+{
+  admin off
+}
+
+localhost {
+  root * /srv
+  file_server
+
+  handle_path /auth/internal/* {
+    respond "Forbidden" 403
+  }
+
+  handle_path /auth/* {
+    reverse_proxy auth-service:3000
+  }
+}
