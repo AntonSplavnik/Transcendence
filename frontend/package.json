@@ -5,10 +5,12 @@
     "typescript": "^5.9.3"
   },
   "name": "frontend",
-  "description": "npm install",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Pong Frontend",
+  "main": "public/index.html",
+  "type": "module",
   "scripts": {
+    "dev": "node --watch src/index.ts",
     "build": "tailwindcss -i src/styles/input.css -o public/styles.css && tsc",
     "watch": "tsc -w"
   },
