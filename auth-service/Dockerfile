@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /srv/app
 COPY package*.json ./
 COPY tsconfig.json ./
@@ -6,7 +6,7 @@ RUN npm install
 COPY src ./src
 RUN npm run build:ts
 
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /srv/app
 ENV NODE_ENV=production
 COPY package*.json ./
