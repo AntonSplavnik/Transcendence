@@ -1,4 +1,5 @@
 // This file contains code that we reuse between our tests.
+import fp from 'fastify-plugin'
 import * as path from 'node:path'
 import * as test from 'node:test'
 const helper = require('fastify-cli/helper.js')
@@ -9,16 +10,26 @@ export type TestContext = {
 
 const AppPath = path.join(__dirname, '..', 'src', 'app.ts')
 
+const mockRabbit = fp(async (fastify, opts) => {
+  fastify.decorate('rabbitmq', {
+    createConsumer: (opts: any, cb: any) => { },
+    createPublisher: (opts: any) => ({
+      send: async (queue: string, msg: any) => { }
+    })
+  } as any)
+})
+
 // Fill in this config with all the configurations
 // needed for testing the application
-function config () {
+function config() {
   return {
-    skipOverride: true // Register our application with fastify-plugin
+    skipOverride: true, // Register our application with fastify-plugin
+    rabbitPlugin: mockRabbit
   }
 }
 
 // Automatically build and tear down our instance
-async function build (t: TestContext) {
+async function build(t: TestContext) {
   // you can set all the options supported by the fastify CLI command
   const argv = [AppPath]
 
@@ -35,6 +46,6 @@ async function build (t: TestContext) {
 }
 
 export {
-  config,
-  build
+  build, config
 }
+

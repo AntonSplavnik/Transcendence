@@ -4,7 +4,7 @@ import fastifyRabbit from 'fastify-rabbitmq'
 import { join } from 'node:path'
 
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
-
+  rabbitPlugin?: any
 }
 // Pass --options via CLI arguments in command to enable these options.
 const options: AppOptions = {
@@ -15,7 +15,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   opts
 ): Promise<void> => {
   const rabbitConnection = process.env.RABBITMQ_URL!;
-  fastify.register(fastifyRabbit, {
+  fastify.register(opts.rabbitPlugin || fastifyRabbit, {
     connection: rabbitConnection
   });
   // Place here your custom code!

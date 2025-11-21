@@ -18,19 +18,19 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fastify/autoload": "^6.0.0",
-    "@fastify/sensible": "^6.0.0",
-    "fastify": "^5.0.0",
-    "fastify-cli": "^7.4.1",
-    "fastify-plugin": "^5.0.0",
-    "fastify-rabbitmq": "^3.3.0"
+    "@fastify/autoload": "^6.3",
+    "@fastify/sensible": "^6.0",
+    "fastify": "^5.6",
+    "fastify-cli": "^7.4",
+    "fastify-plugin": "^5.1",
+    "fastify-rabbitmq": "^3.3"
   },
   "devDependencies": {
-    "@types/node": "^24.0.8",
-    "c8": "^10.1.2",
-    "concurrently": "^9.0.0",
+    "@types/node": "^24.10",
+    "c8": "^10.1",
+    "concurrently": "^9.2",
     "fastify-tsconfig": "^3.0.0",
-    "ts-node": "^10.4.0",
-    "typescript": "~5.9.2"
+    "ts-node": "^10.9",
+    "typescript": "~5.9"
   }
 }

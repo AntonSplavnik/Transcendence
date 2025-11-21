@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "@tailwindcss/cli": "^4.1.17",
-    "tailwindcss": "^4.1.17",
-    "typescript": "^5.9.3"
+    "@tailwindcss/cli": "^4.1",
+    "tailwindcss": "^4.1",
+    "typescript": "~5.9"
   },
   "name": "frontend",
   "description": "npm install",
