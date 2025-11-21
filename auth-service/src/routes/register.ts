@@ -6,10 +6,21 @@ interface RegisterBody {
 	password: string;
 }
 
+interface RegisterReply {
+	201: { success: boolean, userId: number };
+	'4xx': { error: string };
+	500: {};
+}
+
 const register: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-	fastify.post<{ Body: RegisterBody }>('/register', async function (request, reply) {
+	fastify.post<{ Body: RegisterBody, Reply: RegisterReply }>('/register', async (request, reply) => {
 		const { username, password } = request.body;
 		const password_hash = await argon2.hash(password);
+
+		if (password.length < 8 || username.length < 3) {
+			reply.code(400).send({ error: 'Invalid username or password: too short' });
+			return;
+		}
 
 		try {
 			const result = await fastify.db.run(
@@ -17,17 +28,15 @@ const register: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 				[username, password_hash]
 			);
 
-			reply.status(201);
-			return { success: true, userId: result.lastID };
+			reply.code(201).send({ success: true, userId: result.lastID! });
 		} catch (err: any) {
 			if (err.code === 'SQLITE_CONSTRAINT') {
-				reply.status(409);
-				return { success: false, message: 'Username already exists' };
+				reply.code(409).send({ error: 'Username already exists' });
+				return;
 			}
 
 			request.log.error(err);
-			reply.status(500);
-			return { success: false, message: 'User registration failed' };
+			reply.code(500);
 		}
 	})
 }

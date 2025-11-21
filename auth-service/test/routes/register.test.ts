@@ -44,4 +44,34 @@ test('register route', async (t) => {
 		})
 		assert.strictEqual(res.statusCode, 500)
 	})
+
+	await t.test('should fail when username is too short', async () => {
+		const res = await app.inject({
+			method: 'POST',
+			url: '/register',
+			payload: {
+				username: 'ab',
+				password: 'password123',
+			}
+		})
+
+		assert.strictEqual(res.statusCode, 400)
+		const body = JSON.parse(res.payload)
+		assert.strictEqual(body.error, 'Invalid username or password: too short')
+	})
+
+	await t.test('should fail when password is too short', async () => {
+		const res = await app.inject({
+			method: 'POST',
+			url: '/register',
+			payload: {
+				username: 'validuser',
+				password: 'short',
+			}
+		})
+
+		assert.strictEqual(res.statusCode, 400)
+		const body = JSON.parse(res.payload)
+		assert.strictEqual(body.error, 'Invalid username or password: too short')
+	})
 })
