@@ -4,16 +4,64 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Tailwind CSS and TypeScript Website</title>
+	<title>Transcendence - Pong Game</title>
 	<link href="./styles.css" rel="stylesheet">
 </head>
 
-<body>
-	<div class="container mx-auto">
-		<h1 class="text-3xl font-bold">Welcome to Your Tailwind CSS and TypeScript Website</h1>
-		<p class="mt-4">This is a simple setup to get you started with Tailwind CSS and TypeScript.</p>
-	</div>
+<body class="bg-gray-900 text-white min-h-screen">
+	<!-- Header avec profil -->
+	<header class="bg-gray-800 shadow-lg">
+		<div class="container mx-auto px-6 py-4 flex justify-between items-center">
+			<h1 class="text-2xl font-bold text-cyan-400">Transcendence</h1>
+			
+			<!-- Profil utilisateur (top right) -->
+			<div class="flex items-center gap-4">
+				<div class="text-right">
+					<p class="text-sm text-gray-400">Invité</p>
+					<p class="text-xs text-gray-500">Non connecté</p>
+				</div>
+				<div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-gray-900">
+					?
+				</div>
+			</div>
+		</div>
+	</header>
+
+	<!-- Contenu principal -->
+	<main class="container mx-auto px-6 py-12">
+		<div class="flex flex-col items-center justify-center min-h-[70vh] gap-8">
+			<div class="text-center">
+				<h2 class="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+					Bienvenue sur Transcendence
+				</h2>
+				<p class="text-gray-400 text-lg">Le jeu de Pong</p>
+			</div>
+
+			<!-- Bouton principal Jouer -->
+			<button 
+				id="playLocalBtn"
+				class="px-12 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-lg font-bold text-xl shadow-lg hover:shadow-cyan-500/50 transition-all transform hover:scale-105"
+			>
+				🎮 Jouer en Local
+			</button>
+
+			<!-- Zone de statut (pour messages futurs) -->
+			<div id="statusMessage" class="text-gray-500 text-sm h-6"></div>
+		</div>
+	</main>
+
+	<!-- Footer -->
+	<footer class="fixed bottom-0 w-full bg-gray-800 py-3 text-center text-gray-500 text-sm">
+		<p>Transcendence v0.1.0 | Projet ft_transcendence</p>
+	</footer>
+
 	<script src="./dist/main.js"></script>
+	<script>
+		// Bouton Jouer en Local
+		document.getElementById('playLocalBtn')?.addEventListener('click', () => {
+			window.location.href = '/setup-game.html';
+		});
+	</script>
 </body>
 
 </html>

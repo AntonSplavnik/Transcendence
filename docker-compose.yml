@@ -20,8 +20,21 @@ services:
     environment:
       NODE_ENV: production
       RABBITMQ_URL: amqp://auth_user:auth_pass@rabbit:5672
+
+  game-service:
+    build:
+      context: ./game-service
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      RABBITMQ_URL: amqp://auth_user:auth_pass@rabbit:5672
+      DB_PATH: /data/transcendence.db
     volumes:
-      - auth_service_data:/data
+      - game_service_data:/data
+    ports:
+      - "3000:3000"
 
   caddy:
     build:
@@ -39,5 +52,6 @@ services:
 volumes:
   rabbitmq_data:
   auth_service_data:
+  game_service_data:
   caddy_data:
   caddy_config:

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Transcendence - Partie en cours</title>
+	<link href="./styles.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen">
+	<!-- Header simple -->
+	<header class="bg-gray-800 shadow-lg">
+		<div class="container mx-auto px-6 py-4">
+			<h1 class="text-2xl font-bold text-cyan-400 text-center">Partie en cours</h1>
+		</div>
+	</header>
+
+	<!-- Zone de jeu principale -->
+	<main class="container mx-auto px-6 py-12">
+		<div class="flex flex-col items-center justify-center min-h-[70vh] gap-12">
+			
+			<!-- Compteurs -->
+			<div class="flex gap-24 mb-8">
+				<!-- Compteur Bleu -->
+				<div class="text-center">
+					<div class="text-6xl font-bold text-blue-500 mb-2" id="blueScore">0</div>
+					<div class="text-sm text-gray-400" id="bluePlayerName">Joueur Bleu</div>
+				</div>
+
+				<!-- Séparateur -->
+				<div class="text-6xl font-bold text-gray-600">-</div>
+
+				<!-- Compteur Rouge -->
+				<div class="text-center">
+					<div class="text-6xl font-bold text-red-500 mb-2" id="redScore">0</div>
+					<div class="text-sm text-gray-400" id="redPlayerName">Joueur Rouge</div>
+				</div>
+			</div>
+
+			<!-- Boutons de score -->
+			<div class="flex gap-8">
+				<!-- Bouton Bleu -->
+				<button 
+					id="blueBtn"
+					class="px-16 py-8 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-2xl shadow-lg hover:shadow-blue-500/50 transition-all transform hover:scale-105 active:scale-95"
+				>
+					<span id="blueBtnText">Click Bleu</span>
+				</button>
+
+				<!-- Bouton Rouge -->
+				<button 
+					id="redBtn"
+					class="px-16 py-8 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-2xl shadow-lg hover:shadow-red-500/50 transition-all transform hover:scale-105 active:scale-95"
+				>
+					<span id="redBtnText">Click Rouge</span>
+				</button>
+			</div>
+		</div>
+	</main>
+
+	<!-- Bouton Quitter en bas -->
+	<footer class="fixed bottom-8 w-full flex justify-center">
+		<button 
+			id="quitBtn"
+			class="px-8 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold text-sm shadow-lg transition-all"
+		>
+			← Quitter la partie
+		</button>
+	</footer>
+
+	<!-- Écran de victoire (caché par défaut) -->
+	<div id="victoryScreen" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50" style="display: none;">
+		<div class="flex items-center justify-center min-h-screen">
+			<div class="bg-gray-800 rounded-2xl p-12 max-w-lg w-full mx-4 shadow-2xl border-2 border-cyan-500/50">
+			<!-- Animation victoire -->
+			<div class="text-center mb-8">
+				<div class="text-6xl mb-4">🏆</div>
+				<h2 class="text-4xl font-bold mb-2 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+					Victoire !
+				</h2>
+				<p class="text-gray-400 text-lg mb-4">Félicitations</p>
+				<div id="winnerName" class="text-3xl font-bold text-cyan-400 mb-2"></div>
+				<p class="text-gray-500 text-sm">a remporté la partie</p>
+			</div>
+
+			<!-- Score final -->
+			<div class="bg-gray-900 rounded-lg p-6 mb-8">
+				<h3 class="text-center text-gray-400 text-sm mb-4">Score final</h3>
+				<div class="flex justify-center gap-8">
+					<div class="text-center">
+						<div id="finalBlueScore" class="text-3xl font-bold text-blue-500"></div>
+						<div id="finalBlueName" class="text-xs text-gray-500 mt-1"></div>
+					</div>
+					<div class="text-2xl text-gray-600">-</div>
+					<div class="text-center">
+						<div id="finalRedScore" class="text-3xl font-bold text-red-500"></div>
+						<div id="finalRedName" class="text-xs text-gray-500 mt-1"></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Boutons d'action -->
+			<div class="flex gap-4">
+				<button 
+					id="replayBtn"
+					class="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-lg font-bold shadow-lg hover:shadow-cyan-500/50 transition-all transform hover:scale-105"
+				>
+					🔄 Rejouer
+				</button>
+				<button 
+					id="homeBtn"
+					class="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold shadow-lg transition-all"
+				>
+					🏠 Accueil
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		// Configuration
+		const WINNING_SCORE = 3;
+
+		// Récupérer les noms des joueurs depuis localStorage
+		const player1Name = localStorage.getItem('player1Name') || 'Joueur Bleu';
+		const player2Name = localStorage.getItem('player2Name') || 'Joueur Rouge';
+
+		// Scores
+		let blueScore = 0;
+		let redScore = 0;
+		let gameOver = false;
+
+		// Éléments DOM
+		const blueScoreEl = document.getElementById('blueScore');
+		const redScoreEl = document.getElementById('redScore');
+		const bluePlayerNameEl = document.getElementById('bluePlayerName');
+		const redPlayerNameEl = document.getElementById('redPlayerName');
+		const blueBtnTextEl = document.getElementById('blueBtnText');
+		const redBtnTextEl = document.getElementById('redBtnText');
+		const blueBtn = document.getElementById('blueBtn');
+		const redBtn = document.getElementById('redBtn');
+		const quitBtn = document.getElementById('quitBtn');
+		
+		// Éléments écran de victoire
+		const victoryScreen = document.getElementById('victoryScreen');
+		const winnerNameEl = document.getElementById('winnerName');
+		const finalBlueScoreEl = document.getElementById('finalBlueScore');
+		const finalRedScoreEl = document.getElementById('finalRedScore');
+		const finalBlueNameEl = document.getElementById('finalBlueName');
+		const finalRedNameEl = document.getElementById('finalRedName');
+		const replayBtn = document.getElementById('replayBtn');
+		const homeBtn = document.getElementById('homeBtn');
+
+		// Afficher les noms des joueurs
+		bluePlayerNameEl.textContent = player1Name;
+		redPlayerNameEl.textContent = player2Name;
+		blueBtnTextEl.textContent = `${player1Name}`;
+		redBtnTextEl.textContent = `${player2Name}`;
+
+		// Fonction pour vérifier la victoire
+		function checkVictory() {
+			if (blueScore >= WINNING_SCORE) {
+				endGame(player1Name, 'blue');
+			} else if (redScore >= WINNING_SCORE) {
+				endGame(player2Name, 'red');
+			}
+		}
+
+		// Fonction pour terminer la partie
+		function endGame(winnerName, winnerColor) {
+			gameOver = true;
+			
+			// Désactiver les boutons de jeu
+			blueBtn.disabled = true;
+			redBtn.disabled = true;
+			blueBtn.classList.add('opacity-50', 'cursor-not-allowed');
+			redBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+			// Remplir l'écran de victoire
+			winnerNameEl.textContent = winnerName;
+			winnerNameEl.className = 'text-3xl font-bold mb-2 ' + (winnerColor === 'blue' ? 'text-blue-500' : 'text-red-500');
+			
+			finalBlueScoreEl.textContent = blueScore;
+			finalRedScoreEl.textContent = redScore;
+			finalBlueNameEl.textContent = player1Name;
+			finalRedNameEl.textContent = player2Name;
+
+			// Sauvegarder le résultat dans la DB
+			saveMatchResult(winnerName);
+
+			// Afficher l'écran de victoire avec animation
+			setTimeout(() => {
+				victoryScreen.style.display = 'block';
+			}, 500);
+		}
+
+		// Fonction pour sauvegarder le résultat
+		async function saveMatchResult(winnerName) {
+			const matchData = {
+				player1Name: player1Name,
+				player2Name: player2Name,
+				player1Score: blueScore,
+				player2Score: redScore,
+				winnerName: winnerName
+			};
+
+			try {
+				const response = await fetch('http://localhost:3000/matches', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(matchData)
+				});
+
+				if (response.ok) {
+					const result = await response.json();
+					console.log('Match sauvegardé :', result);
+				} else {
+					console.error('Erreur lors de la sauvegarde:', response.status);
+				}
+			} catch (error) {
+				console.error('Erreur réseau:', error);
+				// On continue quand même, l'erreur n'empêche pas de jouer
+			}
+		}
+
+		// Bouton Bleu
+		blueBtn.addEventListener('click', () => {
+			if (gameOver) return;
+			
+			blueScore++;
+			blueScoreEl.textContent = blueScore;
+			blueScoreEl.classList.add('scale-125');
+			setTimeout(() => blueScoreEl.classList.remove('scale-125'), 200);
+			
+			checkVictory();
+		});
+
+		// Bouton Rouge
+		redBtn.addEventListener('click', () => {
+			if (gameOver) return;
+			
+			redScore++;
+			redScoreEl.textContent = redScore;
+			redScoreEl.classList.add('scale-125');
+			setTimeout(() => redScoreEl.classList.remove('scale-125'), 200);
+			
+			checkVictory();
+		});
+
+		// Bouton Quitter
+		quitBtn.addEventListener('click', () => {
+			if (confirm('Voulez-vous vraiment quitter la partie ?')) {
+				// Nettoyer le localStorage
+				localStorage.removeItem('player1Name');
+				localStorage.removeItem('player2Name');
+				window.location.href = '/index.html';
+			}
+		});
+
+		// Bouton Rejouer
+		replayBtn.addEventListener('click', () => {
+			// Garder les mêmes joueurs, retourner à la config
+			window.location.href = '/setup-game.html';
+		});
+
+		// Bouton Accueil
+		homeBtn.addEventListener('click', () => {
+			// Nettoyer et retourner à l'accueil
+			localStorage.removeItem('player1Name');
+			localStorage.removeItem('player2Name');
+			window.location.href = '/index.html';
+		});
+	</script>
+</body>
+
+</html>
