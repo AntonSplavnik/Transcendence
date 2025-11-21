@@ -1,44 +1,22 @@
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
-import fastifyRabbit from 'fastify-rabbitmq'
 import { join } from 'node:path'
+import { MqOpts } from './plugins/rabbitmq'
 
-export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
-  rabbitPlugin?: any
+export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions>, MqOpts {
 }
 // Pass --options via CLI arguments in command to enable these options.
 const options: AppOptions = {
+  mockRabbitMq: true,
 }
 
 const app: FastifyPluginAsync<AppOptions> = async (
   fastify,
   opts
 ): Promise<void> => {
-  const rabbitConnection = process.env.RABBITMQ_URL!;
-  fastify.register(opts.rabbitPlugin || fastifyRabbit, {
-    connection: rabbitConnection
-  });
-  // Place here your custom code!
+  // print options
+  fastify.log.info(`App options: ${JSON.stringify(opts)}`);
 
-  fastify.ready().then(async () => {
-    fastify.rabbitmq.createConsumer(
-      {
-        queue: 'auth-test-event',
-        queueOptions: { durable: true },
-      },
-      async (msg, _reply) => {
-        const body = msg?.body;
-        const payload =
-          typeof body === 'string'
-            ? body
-            : Buffer.isBuffer(body)
-              ? body.toString('utf8')
-              : JSON.stringify(body);
-
-        fastify.log.info({ payload }, 'received event from rabbit');
-      },
-    );
-  });
   // Do not touch the following lines
 
   // This loads all plugins defined in plugins
