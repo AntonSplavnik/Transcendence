@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roguelike Simple - Phaser 3 + ROT.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rot-js@2.2.0/dist/rot.min.js"></script>
+    <style>
+        :root {
+            --color-background: #1a1a1a;
+            --color-text: #f5f5f5;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--color-background);
+            color: var(--color-text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        #game-container {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .info {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .controls {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        .controls p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        
+        .stats {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        .stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #ff4444;
+        }
+        
+        .stats p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .attack-info {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 8px;
+            max-width: 400px;
+        }
+        
+        .attack-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #3498db;
+        }
+        
+        .attack-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div class="controls">
+        <h3>🎮 Contrôles</h3>
+        <p>⬆️ ⬇️ ⬅️ ➡️ Flèches : Déplacer le personnage</p>
+        <p>🔲 Gris : Murs</p>
+        <p>⬜ Blanc : Sol</p>
+        <p>🔵 Bleu : Votre personnage</p>
+        <p>🔴 Rouge : Monstres</p>
+    </div>
+    <div class="attack-info">
+        <h3>⚔️ Attaque</h3>
+        <p>Espace : Attaque dans la direction du dernier mouvement</p>
+        <p>Portée : 2 cases</p>
+        <p>Dégâts : Détruit les monstres touchés</p>
+    </div>
+    <div class="stats">
+        <h3>📊 Statistiques</h3>
+        <p id="wave-info">Wave: 0 | Monstres: 0</p>
+        <p id="score-info">Score: 0</p>
+    </div>
+    <div class="info">
+        Roguelike simple avec Phaser 3 + ROT.js
+    </div>
+
+    <script>
+        // Configuration du jeu
+        const TILE_SIZE = 20;
+        const MAP_WIDTH = 30;
+        const MAP_HEIGHT = 25;
+        
+        class GameScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'GameScene' });
+                this.map = [];
+                this.player = null;
+                this.playerX = 0;
+                this.playerY = 0;
+                this.tiles = [];
+                this.monsters = [];
+                this.waveNumber = 0;
+                this.score = 0;
+                this.waveTimer = null;
+                this.lastDirection = { x: 0, y: 1 }; // Direction par défaut: bas
+                this.attackProjectiles = [];
+            }
+            
+            create() {
+                // Générer la carte avec ROT.js
+                this.generateMap();
+                
+                // Dessiner la carte
+                this.drawMap();
+                
+                // Créer le personnage (cercle bleu)
+                this.createPlayer();
+                
+                // Configurer les contrôles
+                this.setupControls();
+                
+                // Démarrer le système de waves
+                this.startWaveSystem();
+            }
+            
+            generateMap() {
+                // Initialiser la carte avec des murs
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    this.map[x] = [];
+                    for (let y = 0; y < MAP_HEIGHT; y++) {
+                        this.map[x][y] = 1; // 1 = mur
+                    }
+                }
+                
+                // Utiliser ROT.js pour générer une carte avec l'algorithme Cellular
+                const mapGenerator = new ROT.Map.Cellular(MAP_WIDTH, MAP_HEIGHT);
+                
+                // Initialiser avec 50% de probabilité de sol
+                mapGenerator.randomize(0.5);
+                
+                // Faire 4 itérations pour créer des zones connectées
+                for (let i = 0; i < 4; i++) {
+                    mapGenerator.create();
+                }
+                
+                // Convertir la carte générée
+                mapGenerator.create((x, y, value) => {
+                    this.map[x][y] = value; // 0 = sol, 1 = mur
+                });
+                
+                // Trouver une position de départ valide pour le joueur
+                this.findPlayerStartPosition();
+            }
+            
+            findPlayerStartPosition() {
+                // Chercher une case de sol (valeur 0) pour placer le joueur
+                for (let x = 1; x < MAP_WIDTH - 1; x++) {
+                    for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+                        if (this.map[x][y] === 0) {
+                            this.playerX = x;
+                            this.playerY = y;
+                            return;
+                        }
+                    }
+                }
+                
+                // Fallback: forcer une position si aucune case libre trouvée
+                this.playerX = Math.floor(MAP_WIDTH / 2);
+                this.playerY = Math.floor(MAP_HEIGHT / 2);
+                this.map[this.playerX][this.playerY] = 0;
+            }
+            
+            drawMap() {
+                // Dessiner chaque case de la carte
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    this.tiles[x] = [];
+                    for (let y = 0; y < MAP_HEIGHT; y++) {
+                        const isWall = this.map[x][y] === 1;
+                        const color = isWall ? 0x555555 : 0xffffff;
+                        
+                        const tile = this.add.rectangle(
+                            x * TILE_SIZE + TILE_SIZE / 2,
+                            y * TILE_SIZE + TILE_SIZE / 2,
+                            TILE_SIZE - 2,
+                            TILE_SIZE - 2,
+                            color
+                        );
+                        
+                        this.tiles[x][y] = tile;
+                    }
+                }
+            }
+            
+            createPlayer() {
+                // Créer un cercle bleu pour représenter le joueur
+                this.player = this.add.circle(
+                    this.playerX * TILE_SIZE + TILE_SIZE / 2,
+                    this.playerY * TILE_SIZE + TILE_SIZE / 2,
+                    TILE_SIZE / 2 - 2,
+                    0x3498db
+                );
+            }
+            
+            setupControls() {
+                // Créer les touches de direction
+                this.cursors = this.input.keyboard.createCursorKeys();
+                
+                // Ajouter la touche Espace pour l'attaque
+                this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.a);
+                
+                // Ajouter des listeners pour les touches
+                this.input.keyboard.on('keydown', (event) => {
+                    let newX = this.playerX;
+                    let newY = this.playerY;
+                    
+                    switch(event.code) {
+                        case 'ArrowUp':
+                            newY--;
+                            this.lastDirection = { x: 0, y: -1 };
+                            break;
+                        case 'ArrowDown':
+                            newY++;
+                            this.lastDirection = { x: 0, y: 1 };
+                            break;
+                        case 'ArrowLeft':
+                            newX--;
+                            this.lastDirection = { x: -1, y: 0 };
+                            break;
+                        case 'ArrowRight':
+                            newX++;
+                            this.lastDirection = { x: 1, y: 0 };
+                            break;
+                        case 'Space':
+                            this.performAttack();
+                            return;
+                        default:
+                            return;
+                    }
+                    
+                    // Vérifier si le déplacement est valide
+                    this.tryMove(newX, newY);
+                });
+            }
+            
+            tryMove(newX, newY) {
+                // Vérifier les limites de la carte
+                if (newX < 0 || newX >= MAP_WIDTH || newY < 0 || newY >= MAP_HEIGHT) {
+                    return false;
+                }
+                
+                // Vérifier si la case est un mur
+                if (this.map[newX][newY] === 1) {
+                    // Animation de rebond si collision avec un mur
+                    this.tweens.add({
+                        targets: this.player,
+                        scaleX: 0.8,
+                        scaleY: 0.8,
+                        duration: 100,
+                        yoyo: true
+                    });
+                    return false;
+                }
+                
+                // Déplacer le joueur
+                this.playerX = newX;
+                this.playerY = newY;
+                
+                // Animer le déplacement
+                this.tweens.add({
+                    targets: this.player,
+                    x: this.playerX * TILE_SIZE + TILE_SIZE / 2,
+                    y: this.playerY * TILE_SIZE + TILE_SIZE / 2,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+                
+                return true;
+            }
+            
+            startWaveSystem() {
+                // Première wave immédiatement
+                this.spawnWave();
+                
+                // Puis toutes les 5 secondes
+                this.waveTimer = this.time.addEvent({
+                    delay: 5000, // 5000ms = 5 secondes
+                    callback: this.spawnWave,
+                    callbackScope: this,
+                    loop: true
+                });
+            }
+            
+            spawnWave() {
+                this.waveNumber++;
+                
+                // Nombre de monstres augmente avec les waves (2 + wave number)
+                const monsterCount = 2 + this.waveNumber;
+                
+                for (let i = 0; i < monsterCount; i++) {
+                    this.spawnMonster();
+                }
+                
+                this.updateStats();
+            }
+            
+            spawnMonster() {
+                // Trouver une position aléatoire valide (sol) pour le monstre
+                let x, y;
+                let attempts = 0;
+                
+                do {
+                    x = Phaser.Math.Between(1, MAP_WIDTH - 2);
+                    y = Phaser.Math.Between(1, MAP_HEIGHT - 2);
+                    attempts++;
+                    
+                    // Éviter boucle infinie
+                    if (attempts > 100) break;
+                    
+                } while (
+                    this.map[x][y] === 1 || // Pas sur un mur
+                    (x === this.playerX && y === this.playerY) || // Pas sur le joueur
+                    this.isMonsterAt(x, y) // Pas sur un autre monstre
+                );
+                
+                // Créer le monstre (cercle rouge)
+                const monster = this.add.circle(
+                    x * TILE_SIZE + TILE_SIZE / 2,
+                    y * TILE_SIZE + TILE_SIZE / 2,
+                    TILE_SIZE / 2 - 3,
+                    0xff4444
+                );
+                
+                // Stocker les données du monstre
+                monster.gridX = x;
+                monster.gridY = y;
+                monster.health = 1;
+                
+                this.monsters.push(monster);
+                
+                // Animation d'apparition
+                monster.setScale(0);
+                this.tweens.add({
+                    targets: monster,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 300,
+                    ease: 'Back.out'
+                });
+                
+                // Démarrer l'IA du monstre
+                this.startMonsterAI(monster);
+            }
+            
+            isMonsterAt(x, y) {
+                return this.monsters.some(m => m.gridX === x && m.gridY === y);
+            }
+            
+            startMonsterAI(monster) {
+                // Le monstre se déplace toutes les 1 seconde
+                this.time.addEvent({
+                    delay: 1000,
+                    callback: () => {
+                        if (!monster.active) return; // Monstre détruit
+                        
+                        this.moveMonsterTowardsPlayer(monster);
+                    },
+                    callbackScope: this,
+                    loop: true
+                });
+            }
+            
+            moveMonsterTowardsPlayer(monster) {
+                // Utiliser ROT.js pour le pathfinding simple
+                const dx = this.playerX - monster.gridX;
+                const dy = this.playerY - monster.gridY;
+                
+                let newX = monster.gridX;
+                let newY = monster.gridY;
+                
+                // Déplacement simple : priorité à l'axe avec la plus grande distance
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    newX += Math.sign(dx);
+                } else if (dy !== 0) {
+                    newY += Math.sign(dy);
+                }
+                
+                // Vérifier si le déplacement est valide
+                if (this.map[newX][newY] === 0 && !this.isMonsterAt(newX, newY)) {
+                    monster.gridX = newX;
+                    monster.gridY = newY;
+                    
+                    // Animer le déplacement
+                    this.tweens.add({
+                        targets: monster,
+                        x: newX * TILE_SIZE + TILE_SIZE / 2,
+                        y: newY * TILE_SIZE + TILE_SIZE / 2,
+                        duration: 200,
+                        ease: 'Power1'
+                    });
+                    
+                    // Vérifier collision avec le joueur
+                    if (newX === this.playerX && newY === this.playerY) {
+                        this.handleMonsterCollision(monster);
+                    }
+                }
+            }
+            
+            handleMonsterCollision(monster) {
+                // Détruire le monstre
+                this.destroyMonster(monster);
+                
+                // Effet visuel sur le joueur
+                this.tweens.add({
+                    targets: this.player,
+                    scaleX: 1.3,
+                    scaleY: 1.3,
+                    duration: 100,
+                    yoyo: true
+                });
+                
+                // Augmenter le score
+                this.score += 10;
+                this.updateStats();
+            }
+            
+            destroyMonster(monster) {
+                // Animation de disparition
+                this.tweens.add({
+                    targets: monster,
+                    scaleX: 0,
+                    scaleY: 0,
+                    alpha: 0,
+                    duration: 200,
+                    onComplete: () => {
+                        monster.destroy();
+                    }
+                });
+                
+                // Retirer de la liste
+                const index = this.monsters.indexOf(monster);
+                if (index > -1) {
+                    this.monsters.splice(index, 1);
+                }
+                
+                this.updateStats();
+            }
+            
+            updateStats() {
+                const waveInfo = document.getElementById('wave-info');
+                const scoreInfo = document.getElementById('score-info');
+                
+                if (waveInfo) {
+                    waveInfo.textContent = `Wave: ${this.waveNumber} | Monstres: ${this.monsters.length}`;
+                }
+                
+                if (scoreInfo) {
+                    scoreInfo.textContent = `Score: ${this.score}`;
+                }
+            }
+        }
+        
+        // Configuration Phaser
+        const config = {
+            type: Phaser.AUTO,
+            width: MAP_WIDTH * TILE_SIZE,
+            height: MAP_HEIGHT * TILE_SIZE,
+            parent: 'game-container',
+            backgroundColor: '#2c3e50',
+            scene: [GameScene],
+            pixelArt: false,
+            antialias: true
+        };
+        
+        // Créer le jeu
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>
+
