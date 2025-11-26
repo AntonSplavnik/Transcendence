@@ -2,6 +2,7 @@ use diesel::{Connection, SqliteConnection};
 use diesel_migrations::{
     EmbeddedMigrations, MigrationHarness, embed_migrations,
 };
+use tracing::info;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -11,7 +12,7 @@ pub fn init() {
 
 fn migrate() {
     let conn = &mut connect().expect("db connect should worked");
-    println!(
+    info!(
         "Has pending migration: {}",
         conn.has_pending_migration(MIGRATIONS).unwrap()
     );

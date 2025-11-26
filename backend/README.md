@@ -25,6 +25,6 @@ You chose diesel, please check the documentation here <https://diesel.rs/guides/
 - Make sure the database exists, then run `diesel migration run`
 - For more diesel-cli functions, please check /migration/README.md.
 
-# About Salvo
+## About Salvo
 
 You can view the salvo documentation and more examples at https://salvo.rs/ 📖.
