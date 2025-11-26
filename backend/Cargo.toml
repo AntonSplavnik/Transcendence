@@ -1,0 +1,71 @@
+[package]
+name = "transcendence-backend"
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.89"
+readme = "./README.md"
+
+[dependencies]
+# simple error handling
+anyhow = "1"
+# config library
+figment = { version = "0.10", features = ["env", "toml"] }
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+# embed files into the compiled binary
+rust-embed = "8"
+# web api backend framework
+salvo = { version = "0.85", features = [
+	"anyhow",
+	"acme",
+	"force-https",
+	"quinn",
+	"cookie",
+	"cors",
+	"jwt-auth",
+	"oapi",
+	"serve-static",
+	"rustls",
+	"logging",
+	"test",
+] }
+# serialization and deserialization library
+serde = "1"
+# easier error types
+thiserror = "2"
+time = "0.3"
+# async-engine and multi-threading
+tokio = { version = "1", features = ["full"] }
+# logging
+tracing = "0.1"
+# enforce checks/rules on struct fields
+validator = { version = "0.20", features = ["derive"] }
+# id generation
+ulid = "1"
+# password hashing
+argon2 = "0.5"
+cookie = "0.18"
+# environment variables
+dotenvy = "0.15"
+# logging
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = [
+	"std",
+	"fmt",
+	"env-filter",
+	"tracing-log",
+	"time",
+	"local-time",
+	"json",
+] }
+# database orm
+diesel_migrations = "2"
+scheduled-thread-pool = "0.2"
+url = "2"
+# database orm
+diesel = { version = "2", features = [
+	"r2d2",
+	"sqlite",
+	"returning_clauses_for_sqlite_3_35",
+] }
+# rand gen
+rand = "0.9"
