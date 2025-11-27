@@ -1,0 +1,24 @@
+/transcendence/
+├── backend/                                   # Code Rust (serveur deréal)
+│   ├── src/
+│   │   ├── main.rs                          # Point d'entrée du serveur
+│   │   ├── game_logic.rs                    # Logique de jeu (mouvements, état)
+│   │   ├── api.rs                           # API REST
+│   │   └── ws.rs                            # WebSocket
+│   ├── Cargo.toml                          # Config crate Rust
+│   └── Dockerfile                          # Containerisation backend
+│
+├── frontend/                                 # Code React + Babylon.js
+│   ├── public/
+│   │   └── index.html                       # Fichier HTML principal, point d’entrée
+│   ├── src/
+│   │   ├── components/                      # Composants React (UI, menus)
+│   │   ├── scenes/                          # Scene Babylon.js
+│   │   │   └── GameScene.tsx                # Scene principale (rendu, contrôles)
+│   │   ├── App.tsx                          # Composant racine
+│   │   ├── main.tsx                         # Point d’entrée React
+│   │   └── style.css                        # Styles globaux
+│   ├── package.json                        # Dependances frontend (react, babylonjs, etc.)
+│   └── tsconfig.json                       # Configuration TypeScript
+│
+└── README.md                                # Documentation du projet
