@@ -27,8 +27,9 @@ function GameScene() {
     const mapGenerator = new MapGenerator(scene)
     mapGenerator.generateMap()
 
-    // Create player at center
-    const player = new Player(scene, Math.floor(GRID_SIZE / 2), Math.floor(GRID_SIZE / 2))
+    // Create player at a random walkable position
+    const playerSpawn = mapGenerator.getRandomWalkablePosition()
+    const player = new Player(scene, playerSpawn.x, playerSpawn.y)
 
     // Camera setup (follows player with offset)
     const cameraOffsetY = 20
@@ -37,19 +38,12 @@ function GameScene() {
     camera.setTarget(player.getPosition())
     camera.attachControl(canvasRef.current, true)
 
-    // Spawn enemies at fixed positions
-    const enemySpawnPoints = [
-      { x: 5, y: 5 },
-      { x: 15, y: 5 },
-      { x: 5, y: 15 },
-      { x: 15, y: 15 },
-      { x: 10, y: 3 }
-    ]
-
+    // Spawn enemies at random walkable positions
     const enemies: Enemy[] = []
-    enemySpawnPoints.forEach(spawnPos => {
+    for (let i = 0; i < 5; i++) {
+      const spawnPos = mapGenerator.getRandomWalkablePosition()
       enemies.push(new Enemy(scene, spawnPos.x, spawnPos.y))
-    })
+    }
 
     // Wave spawning system
     let waveNumber = 1
@@ -61,30 +55,9 @@ function GameScene() {
       console.log(`🌊 Wave ${waveNumber} spawning!`)
       
       for (let i = 0; i < ENEMIES_PER_WAVE; i++) {
-        // Spawn à une position aléatoire sur les bords de la map
-        const side = Math.floor(Math.random() * 4) // 0=top, 1=right, 2=bottom, 3=left
-        let spawnX = 0, spawnY = 0
-
-        switch(side) {
-          case 0: // Top
-            spawnX = Math.floor(Math.random() * GRID_SIZE)
-            spawnY = 0
-            break
-          case 1: // Right
-            spawnX = GRID_SIZE - 1
-            spawnY = Math.floor(Math.random() * GRID_SIZE)
-            break
-          case 2: // Bottom
-            spawnX = Math.floor(Math.random() * GRID_SIZE)
-            spawnY = GRID_SIZE - 1
-            break
-          case 3: // Left
-            spawnX = 0
-            spawnY = Math.floor(Math.random() * GRID_SIZE)
-            break
-        }
-
-        enemies.push(new Enemy(scene, spawnX, spawnY))
+        // Spawn à une position aléatoire walkable
+        const spawnPos = mapGenerator.getRandomWalkablePosition()
+        enemies.push(new Enemy(scene, spawnPos.x, spawnPos.y))
       }
 
       waveNumber++
@@ -106,8 +79,8 @@ function GameScene() {
         lastWaveTime = currentTime
       }
 
-      // Update player
-      player.move(inputState)
+      // Update player (with wall collision)
+      player.move(inputState, mapGenerator)
 
       // Update cooldown bar
       player.updateCooldownBar()
@@ -128,9 +101,9 @@ function GameScene() {
         }
       })
 
-      // Update enemies (AI)
+      // Update enemies (AI with wall collision)
       enemies.forEach(enemy => {
-        enemy.update(player.getPosition())
+        enemy.update(player.getPosition(), mapGenerator)
       })
 
       // Update camera to follow player

@@ -1,5 +1,6 @@
-import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3 } from '@babylonjs/core'
+import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, Texture } from '@babylonjs/core'
 import { gridToWorld, worldToGrid } from '../utils/grid'
+import type { MapGenerator } from '../world/MapGenerator'
 
 export class Enemy {
   mesh: Mesh
@@ -16,13 +17,18 @@ export class Enemy {
   private readonly barYOffset = 0.4 // Au-dessus de l'ennemi
 
   constructor(scene: Scene, gridX: number, gridY: number, hp: number = 3) {
-    // Create mesh
-    this.mesh = MeshBuilder.CreateSphere(`enemy_${Math.random()}`, { diameter: 0.5 }, scene)
+    // Create mesh - using a plane instead of sphere for 2D sprite
+    this.mesh = MeshBuilder.CreatePlane(`enemy_${Math.random()}`, { size: 0.8 }, scene)
     this.mesh.position = gridToWorld(gridX, gridY)
+    this.mesh.billboardMode = Mesh.BILLBOARDMODE_ALL // Always face camera
 
-    // Material
-    const material = new StandardMaterial('enemyMat', scene)
-    material.diffuseColor = new Color3(0.8, 0.1, 0.8) // Purple
+    // Material with texture
+    const material = new StandardMaterial(`enemyMat_${Math.random()}`, scene)
+    const texture = new Texture('/assets/enemy.png', scene)
+    texture.hasAlpha = true // Support transparency
+    material.diffuseTexture = texture
+    material.useAlphaFromDiffuseTexture = true
+    material.backFaceCulling = false // Visible from both sides
     this.mesh.material = material
 
     // Initial state
@@ -86,7 +92,7 @@ export class Enemy {
     this.updateHealthBarPosition()
   }
 
-  update(playerPosition: Vector3) {
+  update(playerPosition: Vector3, mapGenerator?: MapGenerator) {
     // Calculate direction to player
     const dx = playerPosition.x - this.mesh.position.x
     const dz = playerPosition.z - this.mesh.position.z
@@ -94,8 +100,24 @@ export class Enemy {
 
     // Move towards player if not too close
     if (distance > 0.5) {
+      // Save old position
+      const oldX = this.mesh.position.x
+      const oldZ = this.mesh.position.z
+      
+      // Try to move
       this.mesh.position.x += (dx / distance) * this.speed
       this.mesh.position.z += (dz / distance) * this.speed
+
+      // Check wall collision if mapGenerator is provided
+      if (mapGenerator) {
+        const newGrid = worldToGrid(this.mesh.position)
+        
+        if (!mapGenerator.isWalkable(newGrid.x, newGrid.y)) {
+          // Collision detected! Revert to old position
+          this.mesh.position.x = oldX
+          this.mesh.position.z = oldZ
+        }
+      }
 
       // Update grid position
       const grid = worldToGrid(this.mesh.position)

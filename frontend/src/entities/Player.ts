@@ -1,5 +1,6 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh } from '@babylonjs/core'
 import { gridToWorld, worldToGrid, MAP_SIZE } from '../utils/grid'
+import type { MapGenerator } from '../world/MapGenerator'
 
 export class Player {
   mesh: Mesh
@@ -88,18 +89,32 @@ export class Player {
     this.updateCooldownBarPosition()
   }
 
-  move(inputState: { [key: string]: boolean }) {
-    const p = this.mesh.position
+  move(inputState: { [key: string]: boolean }, mapGenerator?: MapGenerator) {
+    // Save current position in case we need to revert
+    const oldX = this.mesh.position.x
+    const oldZ = this.mesh.position.z
     
-    if (inputState['arrowup'] || inputState['w'] || inputState['z']) p.z -= this.speed
-    if (inputState['arrowdown'] || inputState['s']) p.z += this.speed
-    if (inputState['arrowleft'] || inputState['a'] || inputState['q']) p.x -= this.speed
-    if (inputState['arrowright'] || inputState['d']) p.x += this.speed
+    // Apply movement
+    if (inputState['arrowup'] || inputState['w'] || inputState['z']) this.mesh.position.z -= this.speed
+    if (inputState['arrowdown'] || inputState['s']) this.mesh.position.z += this.speed
+    if (inputState['arrowleft'] || inputState['a'] || inputState['q']) this.mesh.position.x -= this.speed
+    if (inputState['arrowright'] || inputState['d']) this.mesh.position.x += this.speed
 
     // Clamp inside map bounds
     const bound = MAP_SIZE / 2 - 0.3
     this.mesh.position.x = Math.min(bound, Math.max(-bound, this.mesh.position.x))
     this.mesh.position.z = Math.min(bound, Math.max(-bound, this.mesh.position.z))
+
+    // Check wall collision if mapGenerator is provided
+    if (mapGenerator) {
+      const newGrid = worldToGrid(this.mesh.position)
+      
+      if (!mapGenerator.isWalkable(newGrid.x, newGrid.y)) {
+        // Collision detected! Revert to old position
+        this.mesh.position.x = oldX
+        this.mesh.position.z = oldZ
+      }
+    }
 
     // Update grid position
     const grid = worldToGrid(this.mesh.position)
