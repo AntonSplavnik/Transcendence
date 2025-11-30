@@ -13,6 +13,7 @@ mod config;
 mod db;
 mod models;
 mod routers;
+mod schema;
 mod utils;
 
 mod error;

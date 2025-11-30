@@ -19,8 +19,6 @@ pub enum AppError {
     Anyhow(#[from] anyhow::Error),
     #[error("diesel::result::Error:`{0}`")]
     Diesel(#[from] diesel::result::Error),
-    #[error("r2d2: `{0}`")]
-    R2d2(#[from] diesel::r2d2::PoolError),
     #[error("diesel::ConnectionError:`{0}`")]
     DieselConnection(#[from] diesel::ConnectionError),
     #[error("validation error:`{0}`")]

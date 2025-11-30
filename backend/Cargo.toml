@@ -32,7 +32,7 @@ salvo = { version = "0.85", features = [
 serde = "1"
 # easier error types
 thiserror = "2"
-time = "0.3"
+chrono = "0.4"
 # async-engine and multi-threading
 tokio = { version = "1", features = ["full"] }
 # logging
@@ -63,9 +63,9 @@ scheduled-thread-pool = "0.2"
 url = "2"
 # database orm
 diesel = { version = "2", features = [
-	"r2d2",
 	"sqlite",
 	"returning_clauses_for_sqlite_3_35",
+	"chrono",
 ] }
 # rand gen
 rand = "0.9"
