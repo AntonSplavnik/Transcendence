@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Engine, Scene, FreeCamera, Vector3, HemisphericLight } from '@babylonjs/core'
 import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
@@ -9,6 +9,14 @@ function GameScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<Engine | null>(null)
   const sceneRef = useRef<Scene | null>(null)
+  
+  // State pour afficher l'XP dans le HUD
+  const [playerXP, setPlayerXP] = useState(0)
+  const [playerLevel, setPlayerLevel] = useState(1)
+  
+  // State pour le panneau technique
+  const [techPanelOpen, setTechPanelOpen] = useState(false)
+  const [monstersKilled, setMonstersKilled] = useState(0)
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -92,6 +100,12 @@ function GameScene() {
       hitEnemies.forEach(enemy => {
         const isDead = enemy.takeDamage(1)
         if (isDead) {
+          // Gain XP for killing enemy
+          player.gainXP(10)
+          
+          // Increment monster kill counter
+          setMonstersKilled(prev => prev + 1)
+          
           // Remove dead enemy
           const index = enemies.indexOf(enemy)
           if (index > -1) {
@@ -112,6 +126,10 @@ function GameScene() {
       camera.position.z = player.getPosition().z + cameraOffsetZ
       camera.setTarget(player.getPosition())
 
+      // Update HUD stats
+      setPlayerXP(player.getXP())
+      setPlayerLevel(player.getLevel())
+
       scene.render()
     })
 
@@ -131,12 +149,93 @@ function GameScene() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-      {/* HUD React (vie, XP, chat, etc.) */}
-      <div style={{ position: 'absolute', top: 10, left: 10, color: 'white', background: 'rgba(0,0,0,0.5)', padding: '10px' }}>
-        <div>LIFE: 100</div>
-        <div>XP: 0</div>
-        <div>Auto-attack: Every 1s (Range: 1 tile)</div>
-        <div>Wave spawns: Every 10s (5 enemies)</div>
+      
+      {/* HUD gauche (stats principales) */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 10, 
+        left: 10, 
+        color: 'white', 
+        background: 'rgba(0,0,0,0.7)', 
+        padding: '15px', 
+        borderRadius: '8px',
+        fontFamily: 'monospace'
+      }}>
+        <div>❤️ LIFE: 100</div>
+        <div>⭐ XP: {playerXP}</div>
+        <div>🎖️ LEVEL: {playerLevel}</div>
+        <div style={{ fontSize: '0.85em', marginTop: '10px', opacity: 0.8 }}>
+          <div>⚔️ Auto-attack: 1s</div>
+          <div>🌊 Waves: 10s</div>
+        </div>
+      </div>
+
+      {/* Bouton pour ouvrir/fermer le panneau technique */}
+      <div
+        onClick={() => setTechPanelOpen(!techPanelOpen)}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          width: '240px',
+          background: 'rgba(0,0,0,0.85)',
+          color: '#00ff00',
+          padding: '12px 15px',
+          borderRadius: '8px',
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          border: '2px solid rgba(0,255,0,0.3)',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          userSelect: 'none'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(0,0,0,0.95)'
+          e.currentTarget.style.borderColor = 'rgba(0,255,0,0.6)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(0,0,0,0.85)'
+          e.currentTarget.style.borderColor = 'rgba(0,255,0,0.3)'
+        }}
+      >
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          fontWeight: 'bold'
+        }}>
+          <span>📊 Technical Data</span>
+          <span style={{ fontSize: '12px', opacity: 0.7 }}>
+            {techPanelOpen ? '▲' : '▼'}
+          </span>
+        </div>
+
+        {/* Contenu du panneau (visible seulement si ouvert) */}
+        {techPanelOpen && (
+          <div style={{
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid rgba(0,255,0,0.3)',
+            animation: 'slideDown 0.3s ease'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>💀 Monsters killed:</span>
+                <span style={{ color: '#ff4444', fontWeight: 'bold' }}>{monstersKilled}</span>
+              </div>
+              
+              <div style={{ 
+                marginTop: '10px', 
+                paddingTop: '10px', 
+                borderTop: '1px solid rgba(0,255,0,0.2)',
+                fontSize: '11px',
+                opacity: 0.7
+              }}>
+                More stats coming soon...
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

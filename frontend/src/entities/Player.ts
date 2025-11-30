@@ -11,6 +11,10 @@ export class Player {
   attackRange: number = 1 // 1 case de distance
   slashLines: LinesMesh[] = [] // Pour les effets visuels d'attaque
   
+  // Stats du joueur
+  xp: number = 0
+  level: number = 1
+  
   // Barre de cooldown
   private cooldownBarBackground: Mesh
   private cooldownBarFill: Mesh
@@ -188,6 +192,23 @@ export class Player {
       this.slashLines.forEach((line: LinesMesh) => line.dispose())
       this.slashLines = []
     }, 100)
+  }
+
+  // Gagner de l'XP
+  gainXP(amount: number) {
+    this.xp += amount
+    console.log(`💎 +${amount} XP! Total: ${this.xp}`)
+    
+    // Pour l'instant pas de level up, juste affichage
+    // Tu pourras ajouter un système de level plus tard
+  }
+
+  getXP(): number {
+    return this.xp
+  }
+
+  getLevel(): number {
+    return this.level
   }
 
   dispose() {

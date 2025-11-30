@@ -1,6 +1,7 @@
 import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, Texture } from '@babylonjs/core'
 import { gridToWorld, worldToGrid } from '../utils/grid'
 import type { MapGenerator } from '../world/MapGenerator'
+import * as ROT from 'rot-js'
 
 export class Enemy {
   mesh: Mesh
@@ -8,6 +9,11 @@ export class Enemy {
   hp: number
   maxHp: number
   speed: number = 0.02
+  
+  // Pathfinding
+  private path: number[][] = [] // Chemin calculé [x, y][]
+  private pathUpdateCooldown: number = 0
+  private readonly PATH_UPDATE_INTERVAL = 500 // Recalculer le chemin toutes les 500ms
   
   // Barre de vie
   private healthBarBackground: Mesh
@@ -93,40 +99,85 @@ export class Enemy {
   }
 
   update(playerPosition: Vector3, mapGenerator?: MapGenerator) {
-    // Calculate direction to player
-    const dx = playerPosition.x - this.mesh.position.x
-    const dz = playerPosition.z - this.mesh.position.z
-    const distance = Math.sqrt(dx * dx + dz * dz)
+    if (!mapGenerator) {
+      // Fallback: comportement simple sans pathfinding
+      this.simpleMovement(playerPosition)
+      this.updateHealthBar()
+      return
+    }
 
-    // Move towards player if not too close
-    if (distance > 0.5) {
-      // Save old position
-      const oldX = this.mesh.position.x
-      const oldZ = this.mesh.position.z
-      
-      // Try to move
-      this.mesh.position.x += (dx / distance) * this.speed
-      this.mesh.position.z += (dz / distance) * this.speed
+    const currentTime = Date.now()
+    const playerGrid = worldToGrid(playerPosition)
 
-      // Check wall collision if mapGenerator is provided
-      if (mapGenerator) {
-        const newGrid = worldToGrid(this.mesh.position)
-        
-        if (!mapGenerator.isWalkable(newGrid.x, newGrid.y)) {
-          // Collision detected! Revert to old position
-          this.mesh.position.x = oldX
-          this.mesh.position.z = oldZ
-        }
+    // Recalculer le chemin périodiquement
+    if (currentTime - this.pathUpdateCooldown >= this.PATH_UPDATE_INTERVAL) {
+      this.calculatePath(playerGrid, mapGenerator)
+      this.pathUpdateCooldown = currentTime
+    }
+
+    // Suivre le chemin calculé
+    if (this.path.length > 1) {
+      // Le prochain point du chemin (index 1 car index 0 est notre position actuelle)
+      const nextStep = this.path[1]
+      const targetPos = gridToWorld(nextStep[0], nextStep[1])
+
+      // Se déplacer vers le prochain point
+      const dx = targetPos.x - this.mesh.position.x
+      const dz = targetPos.z - this.mesh.position.z
+      const distance = Math.sqrt(dx * dx + dz * dz)
+
+      if (distance > 0.1) {
+        // Déplacement vers le point
+        this.mesh.position.x += (dx / distance) * this.speed
+        this.mesh.position.z += (dz / distance) * this.speed
+      } else {
+        // Point atteint, on passe au suivant
+        this.path.shift()
       }
 
       // Update grid position
       const grid = worldToGrid(this.mesh.position)
       this.gridPos.x = grid.x
       this.gridPos.y = grid.y
+    } else {
+      // Pas de chemin, on essaie le mouvement simple
+      this.simpleMovement(playerPosition)
     }
 
     // Update health bar position
     this.updateHealthBar()
+  }
+
+  private calculatePath(targetGrid: { x: number, y: number }, mapGenerator: MapGenerator) {
+    // Utiliser A* de ROT.js pour calculer le chemin
+    const astar = new ROT.Path.AStar(
+      targetGrid.x, 
+      targetGrid.y, 
+      (x, y) => mapGenerator.isWalkable(x, y), // Callback pour vérifier si walkable
+      { topology: 8 } // Permet diagonales
+    )
+
+    const path: number[][] = []
+    astar.compute(this.gridPos.x, this.gridPos.y, (x, y) => {
+      path.push([x, y])
+    })
+
+    this.path = path
+  }
+
+  private simpleMovement(playerPosition: Vector3) {
+    const dx = playerPosition.x - this.mesh.position.x
+    const dz = playerPosition.z - this.mesh.position.z
+    const distance = Math.sqrt(dx * dx + dz * dz)
+
+    if (distance > 0.5) {
+      this.mesh.position.x += (dx / distance) * this.speed
+      this.mesh.position.z += (dz / distance) * this.speed
+
+      const grid = worldToGrid(this.mesh.position)
+      this.gridPos.x = grid.x
+      this.gridPos.y = grid.y
+    }
   }
 
   takeDamage(damage: number): boolean {
