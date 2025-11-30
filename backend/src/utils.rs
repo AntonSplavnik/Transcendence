@@ -24,7 +24,11 @@ pub fn verify_password(
 ) -> Result<(), password_hash::Error> {
     let hash =
         PasswordHash::new(&password_hash.unwrap_or(&RANDOM_PASSWORD_HASH))?;
-    ARGON2.verify_password(password.as_bytes(), &hash)
+    let res = ARGON2.verify_password(password.as_bytes(), &hash);
+    match password_hash {
+        Some(_) => res,
+        None => Err(password_hash::Error::Password), // when no hash (user does not exist), always return Error::Password
+    }
 }
 
 pub fn hash_password(password: &str) -> Result<String, password_hash::Error> {
