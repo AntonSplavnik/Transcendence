@@ -37,6 +37,7 @@ pub fn empty_ok() -> JsonResult<Empty> {
 #[tokio::main]
 async fn main() -> ExitCode {
     let _ = dotenvy::dotenv();
+    utils::init();
     crate::config::init();
     let config = crate::config::get();
     let _guard = config.log.guard();

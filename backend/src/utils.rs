@@ -1,26 +1,35 @@
+use std::sync::LazyLock;
+
 use argon2::{
-    Argon2, PasswordHash,
-    password_hash::{SaltString, rand_core::OsRng},
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+    password_hash::{self, SaltString, rand_core::OsRng},
 };
 
-pub fn verify_password(
-    password: &str,
-    password_hash: &str,
-) -> anyhow::Result<()> {
-    let hash = PasswordHash::new(&password_hash)
-        .map_err(|e| anyhow::anyhow!("invalid password hash: {}", e))?;
-    let result = hash.verify_password(&[&Argon2::default()], password);
-    match result {
-        Ok(_) => Ok(()),
-        Err(_) => Err(anyhow::anyhow!("invalid password")),
-    }
+static RANDOM_PASSWORD_HASH: LazyLock<String> = LazyLock::new(|| {
+    hash_password("dummy password")
+        .expect("Failed to generate dummy password hash")
+        .to_string()
+});
+
+static ARGON2: LazyLock<Argon2<'static>> = LazyLock::new(|| Argon2::default());
+
+pub fn init() {
+    LazyLock::force(&RANDOM_PASSWORD_HASH);
 }
 
-pub fn hash_password(password: &str) -> anyhow::Result<String> {
+/// Constant-time password verification
+pub fn verify_password(
+    password: &str,
+    password_hash: Option<&str>,
+) -> Result<(), password_hash::Error> {
+    let hash =
+        PasswordHash::new(&password_hash.unwrap_or(&RANDOM_PASSWORD_HASH))?;
+    ARGON2.verify_password(password.as_bytes(), &hash)
+}
+
+pub fn hash_password(password: &str) -> Result<String, password_hash::Error> {
     let salt = SaltString::generate(&mut OsRng);
-    Ok(PasswordHash::generate(Argon2::default(), password, &salt)
-        .map_err(|e| {
-            anyhow::anyhow!("failed to generate password hash: {}", e)
-        })?
-        .to_string())
+    ARGON2
+        .hash_password(password.as_bytes(), &salt)
+        .map(|ph| ph.to_string())
 }
