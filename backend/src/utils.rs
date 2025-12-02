@@ -42,7 +42,7 @@ pub fn hash_password(password: &str) -> Result<String, password_hash::Error> {
 pub fn validate_nickname(nickname: &str) -> Result<(), ValidationError> {
     let len = nickname.len();
 
-    let mut err = if nickname.trim() != nickname {
+    let err = if nickname.trim() != nickname {
         ValidationError::new("trim").with_message(
             "Must not have leading or trailing whitespace.".into(),
         )

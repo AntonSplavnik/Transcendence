@@ -36,6 +36,7 @@ pub fn register(
 pub fn login() {}
 
 #[endpoint(
+    summary = "Logout a user",
     security(("session" = []))
 )]
 pub fn logout() {}
