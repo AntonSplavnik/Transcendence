@@ -11,19 +11,21 @@ use tracing::info;
 
 mod config;
 mod db;
+mod hoops;
 mod models;
 mod routers;
 mod schema;
 mod utils;
 
 mod error;
-pub use error::AppError;
+pub use error::ApiError;
 
 use crate::config::{ServerConfig, TlsConfig};
 
-pub type AppResult<T> = Result<T, AppError>;
-pub type JsonResult<T> = Result<Json<T>, AppError>;
-pub type EmptyResult = Result<Json<Empty>, AppError>;
+pub type StatusResult = Result<StatusCode, ApiError>;
+pub type AppResult<T> = Result<T, ApiError>;
+pub type JsonResult<T> = Result<Json<T>, ApiError>;
+pub type EmptyResult = Result<Json<Empty>, ApiError>;
 
 pub fn json_ok<T>(data: T) -> JsonResult<T> {
     Ok(Json(data))
@@ -128,7 +130,7 @@ where
         listen_addr.replace("0.0.0.0", "127.0.0.1"),
     );
     eprintln!(
-        "📖 Open API Page: https://{}:{port}/scalar",
+        "📖 Open API Pages:\nhttps://{0}:{port}/scalar\nhttps://{0}:{port}/swagger-ui\nhttps://{0}:{port}/rapidoc\nhttps://{0}:{port}/redoc",
         listen_addr.replace("0.0.0.0", "127.0.0.1")
     );
 

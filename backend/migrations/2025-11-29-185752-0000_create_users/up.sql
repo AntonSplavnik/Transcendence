@@ -1,9 +1,9 @@
 CREATE TABLE users (
 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	email TEXT UNIQUE NOT NULL,
-	nickname TEXT UNIQUE NOT NULL,
+	email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+	nickname TEXT UNIQUE NOT NULL COLLATE NOCASE,
 	password_hash TEXT NOT NULL,
 	created_at DATETIME NOT NULL
 );
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_nickname ON users(nickname);
+CREATE INDEX idx_users_email ON users(email COLLATE NOCASE);
+CREATE INDEX idx_users_nickname ON users(nickname COLLATE NOCASE);

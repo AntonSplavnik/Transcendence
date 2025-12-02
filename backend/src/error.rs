@@ -1,108 +1,136 @@
-use salvo::http::{ParseError, StatusCode, StatusError};
+use salvo::http::{StatusCode, StatusError};
 use salvo::oapi::{self, EndpointOutRegister, ToSchema};
 use salvo::prelude::*;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum AppError {
-    #[error("public: `{0}`")]
-    Public(String),
-    #[error("internal: `{0}`")]
-    Internal(String),
-    #[error("salvo internal error: `{0}`")]
-    Salvo(#[from] ::salvo::Error),
-    #[error("http status error: `{0}`")]
-    HttpStatus(#[from] StatusError),
-    #[error("http parse error:`{0}`")]
-    HttpParse(#[from] ParseError),
-    #[error("anyhow error:`{0}`")]
-    Anyhow(#[from] anyhow::Error),
-    #[error("diesel::result::Error:`{0}`")]
-    Diesel(#[from] diesel::result::Error),
-    #[error("diesel::ConnectionError:`{0}`")]
-    DieselConnection(#[from] diesel::ConnectionError),
-    #[error("validation error:`{0}`")]
+#[error(transparent)]
+pub enum ApiError {
     Validation(#[from] validator::ValidationErrors),
-}
-impl AppError {
-    pub fn public<S: Into<String>>(msg: S) -> Self {
-        Self::Public(msg.into())
-    }
-
-    pub fn internal<S: Into<String>>(msg: S) -> Self {
-        Self::Internal(msg.into())
-    }
+    PasswordHash(#[from] argon2::password_hash::Error),
+    DatabaseSQL(#[from] diesel::result::Error),
+    DatabaseConnection(#[from] diesel::ConnectionError),
+    DatabaseConnectionPool(#[from] diesel::r2d2::PoolError),
 }
 
 #[async_trait]
-impl Writer for AppError {
+impl Writer for ApiError {
     async fn write(
-        mut self,
+        self,
         _req: &mut Request,
         _depot: &mut Depot,
         res: &mut Response,
     ) {
-        let code = match &self {
-            Self::HttpStatus(e) => e.code,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        res.status_code(code);
-        let data = match self {
-            Self::Salvo(e) => {
-                tracing::error!(error = ?e, "salvo error");
-                StatusError::internal_server_error()
-                    .brief("Unknown error happened in salvo.")
+        let status_error = match self {
+            // Validation errors -> 400 Bad Request with field details
+            Self::Validation(errs) => {
+                StatusError::bad_request().brief(errs.to_string())
             }
-            Self::Public(msg) => {
-                StatusError::internal_server_error().brief(msg)
-            }
-            Self::Internal(msg) => {
-                tracing::error!(msg = msg, "internal error");
-                StatusError::internal_server_error()
-            }
-            Self::Diesel(e) => {
-                tracing::error!(error = ?e, "diesel db error");
-                if let diesel::result::Error::NotFound = e {
-                    StatusError::not_found().brief("Resource not found.")
-                } else {
-                    StatusError::internal_server_error()
-                        .brief("Database error.")
+            // Argon2 password hash errors
+            Self::PasswordHash(err) => {
+                use argon2::password_hash::Error;
+                match err {
+                    // Wrong password -> 401 Unauthorized
+                    Error::Password => {
+                        StatusError::unauthorized().brief("Invalid credentials")
+                    }
+                    // Other hashing errors are internal
+                    err => {
+                        tracing::error!(error = ?err, "Argon2 password hash error");
+                        StatusError::internal_server_error()
+                    }
                 }
             }
-            Self::HttpStatus(e) => e,
-            e => StatusError::internal_server_error()
-                .brief(format!("Unknown error happened: {e}"))
-                .cause(e),
+            // Diesel SQL errors
+            Self::DatabaseSQL(err) => {
+                use diesel::result::{DatabaseErrorKind, Error};
+                match err {
+                    // Not found -> 404
+                    Error::NotFound => {
+                        StatusError::not_found().brief("Resource not found")
+                    }
+                    // Database constraint errors
+                    Error::DatabaseError(kind, info) => {
+                        let message = info.message().to_string();
+                        match kind {
+                            // Unique violation -> 409 Conflict
+                            // SQLite message format: "UNIQUE constraint failed: users.email"
+                            DatabaseErrorKind::UniqueViolation => {
+                                let field = message
+                                    .strip_prefix("UNIQUE constraint failed: ")
+                                    .and_then(|s| s.split('.').last())
+                                    .unwrap_or("Value");
+                                StatusError::conflict()
+                                    .brief(format!("{} already exists", field))
+                            }
+                            // Foreign key violation -> 400 Bad Request
+                            DatabaseErrorKind::ForeignKeyViolation => {
+                                StatusError::bad_request()
+                                    .brief("Referenced resource does not exist")
+                            }
+                            // Check constraint violation -> 400 Bad Request
+                            DatabaseErrorKind::CheckViolation => {
+                                StatusError::bad_request().brief(format!(
+                                    "Constraint violation: {}",
+                                    message
+                                ))
+                            }
+                            // Not null violation -> 400 Bad Request
+                            DatabaseErrorKind::NotNullViolation => {
+                                StatusError::bad_request()
+                                    .brief("A required field is missing")
+                            }
+                            // Other database errors are internal
+                            _ => {
+                                tracing::error!(error = message, kind = ?kind, "Database error");
+                                StatusError::internal_server_error()
+                            }
+                        }
+                    }
+                    // All other diesel errors are internal
+                    err => {
+                        tracing::error!(error = ?err, "Diesel error");
+                        StatusError::internal_server_error()
+                    }
+                }
+            }
+            // Connection errors -> 500 Internal
+            Self::DatabaseConnection(err) => {
+                tracing::error!(error = ?err, "Database connection error");
+                StatusError::internal_server_error()
+            }
+            // Pool errors -> 500 Internal
+            Self::DatabaseConnectionPool(err) => {
+                tracing::error!(error = ?err, "Database connection pool error");
+                StatusError::internal_server_error()
+            }
         };
-        res.render(data);
+
+        res.render(status_error);
     }
 }
 
-impl EndpointOutRegister for AppError {
+impl EndpointOutRegister for ApiError {
     fn register(
-        components: &mut salvo::oapi::Components,
-        operation: &mut salvo::oapi::Operation,
+        components: &mut oapi::Components,
+        operation: &mut oapi::Operation,
     ) {
-        operation.responses.insert(
-            StatusCode::INTERNAL_SERVER_ERROR.as_str(),
-            oapi::Response::new("Internal server error").add_content(
-                "application/json",
-                StatusError::to_schema(components),
-            ),
-        );
-        operation.responses.insert(
-            StatusCode::NOT_FOUND.as_str(),
-            oapi::Response::new("Not found").add_content(
-                "application/json",
-                StatusError::to_schema(components),
-            ),
-        );
-        operation.responses.insert(
-            StatusCode::BAD_REQUEST.as_str(),
-            oapi::Response::new("Bad request").add_content(
-                "application/json",
-                StatusError::to_schema(components),
-            ),
-        );
+        let responses = [
+            (StatusCode::BAD_REQUEST, "Bad request or validation error"),
+            (StatusCode::UNAUTHORIZED, "Invalid credentials"),
+            (StatusCode::NOT_FOUND, "Resource not found"),
+            (StatusCode::CONFLICT, "Resource already exists"),
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+        ];
+
+        for (status, description) in responses {
+            operation.responses.insert(
+                status.as_str(),
+                oapi::Response::new(description).add_content(
+                    "application/json",
+                    StatusError::to_schema(components),
+                ),
+            );
+        }
     }
 }

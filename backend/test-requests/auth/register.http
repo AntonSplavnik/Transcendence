@@ -1,0 +1,30 @@
+### successful registration - returns 201 (if user does not exist yet, otherwise 409 Conflict)
+
+POST https://localhost:8443/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+	"email": "user@example.com",
+	"nickname": "new_User",
+	"password": "securePass"
+}
+
+### validation errors - returns error 400
+
+POST https://localhost:8443/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+	"email": "no-email",
+	"nickname": "a bad nick!",
+	"password": "123",
+	"extra_field": "should be ignored"
+}
+
+### no body - returns error 400
+
+POST https://localhost:8443/api/auth/register
+Content-Type: application/json
+Accept: application/json
