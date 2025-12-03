@@ -3,7 +3,6 @@ import { Engine, Scene, FreeCamera, Vector3, HemisphericLight } from '@babylonjs
 import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
 import { MapGenerator } from '../world/MapGenerator'
-import { GRID_SIZE } from '../utils/grid'
 
 function GameScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -13,6 +12,10 @@ function GameScene() {
   // State pour afficher l'XP dans le HUD
   const [playerXP, setPlayerXP] = useState(0)
   const [playerLevel, setPlayerLevel] = useState(1)
+  const [totalDamage, setTotalDamage] = useState(0)
+  const [currentLevelXP, setCurrentLevelXP] = useState(0)
+  const [nextLevelXP, setNextLevelXP] = useState(0)
+  const [attackDamage, setAttackDamage] = useState(1)
   
   // State pour le panneau technique
   const [techPanelOpen, setTechPanelOpen] = useState(false)
@@ -98,7 +101,12 @@ function GameScene() {
       
       // Deal damage to hit enemies
       hitEnemies.forEach(enemy => {
-        const isDead = enemy.takeDamage(1)
+        const damage = player.getAttackDamage()
+        const isDead = enemy.takeDamage(damage)
+        
+        // Incrémenter les dégâts totaux
+        player.addDamage(damage)
+        
         if (isDead) {
           // Gain XP for killing enemy
           player.gainXP(10)
@@ -129,6 +137,10 @@ function GameScene() {
       // Update HUD stats
       setPlayerXP(player.getXP())
       setPlayerLevel(player.getLevel())
+      setTotalDamage(player.getTotalDamage())
+      setCurrentLevelXP(player.getCurrentLevelXP())
+      setNextLevelXP(player.getNextLevelXP())
+      setAttackDamage(player.getAttackDamage())
 
       scene.render()
     })
@@ -161,12 +173,12 @@ function GameScene() {
         borderRadius: '8px',
         fontFamily: 'monospace'
       }}>
-        <div>❤️ LIFE: 100</div>
-        <div>⭐ XP: {playerXP}</div>
-        <div>🎖️ LEVEL: {playerLevel}</div>
-        <div style={{ fontSize: '0.85em', marginTop: '10px', opacity: 0.8 }}>
-          <div>⚔️ Auto-attack: 1s</div>
-          <div>🌊 Waves: 10s</div>
+        <div style={{ color: '#ff4444' }}>LIFE: 100</div>
+        <div style={{ color: '#4488ff' }}>XP: {playerXP - currentLevelXP} / {nextLevelXP - currentLevelXP}</div>
+        <div style={{ color: '#ffcc00' }}>LEVEL: {playerLevel}</div>
+        <div style={{ fontSize: '0.85em', marginTop: '10px', opacity: 0.8, color: 'white' }}>
+          <div>Auto-attack: 1s</div>
+          <div>Waves: 10s</div>
         </div>
       </div>
 
@@ -218,20 +230,47 @@ function GameScene() {
             borderTop: '1px solid rgba(0,255,0,0.3)',
             animation: 'slideDown 0.3s ease'
           }}>
+            {/* Section PLAYER DATA */}
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                fontSize: '12px', 
+                fontWeight: 'bold', 
+                color: '#00ff00',
+                marginBottom: '8px',
+                letterSpacing: '1px'
+              }}>
+                PLAYER DATA
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Attack damage:</span>
+                  <span style={{ color: '#ff8844', fontWeight: 'bold' }}>{attackDamage}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ligne de séparation */}
+            <div style={{ 
+              borderTop: '1px solid rgba(0,255,0,0.3)',
+              marginBottom: '12px'
+            }}></div>
+
+            {/* Section RUN STATISTICS */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>💀 Monsters killed:</span>
+                <span>Monsters killed:</span>
                 <span style={{ color: '#ff4444', fontWeight: 'bold' }}>{monstersKilled}</span>
               </div>
               
-              <div style={{ 
-                marginTop: '10px', 
-                paddingTop: '10px', 
-                borderTop: '1px solid rgba(0,255,0,0.2)',
-                fontSize: '11px',
-                opacity: 0.7
-              }}>
-                More stats coming soon...
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Total damage:</span>
+                <span style={{ color: '#ffaa44', fontWeight: 'bold' }}>{totalDamage}</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Total XP earned:</span>
+                <span style={{ color: '#44aaff', fontWeight: 'bold' }}>{playerXP}</span>
               </div>
             </div>
           </div>

@@ -1,28 +1,107 @@
-import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh } from '@babylonjs/core'
+import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh, DynamicTexture } from '@babylonjs/core'
 import { gridToWorld, worldToGrid, MAP_SIZE } from '../utils/grid'
 import type { MapGenerator } from '../world/MapGenerator'
+
+// Classe pour gérer le texte "LEVEL UP!" flottant
+class LevelUpText {
+  mesh: Mesh
+  lifetime: number = 0
+  maxLifetime: number = 2000 // 2 secondes
+  velocity: Vector3 = new Vector3(0, 0.015, 0) // Vitesse de montée
+  startScale: number = 1.0 // Taille initiale
+
+  constructor(scene: Scene, position: Vector3) {
+    // Créer un plan pour afficher le texte
+    this.mesh = MeshBuilder.CreatePlane('levelUpText', { size: 2.5 }, scene)
+    this.mesh.position = position.clone()
+    this.mesh.position.y += 0.8 // Au-dessus du joueur
+    this.mesh.billboardMode = Mesh.BILLBOARDMODE_ALL
+    this.mesh.scaling.setAll(this.startScale)
+
+    // Créer une texture dynamique pour écrire le texte
+    const texture = new DynamicTexture('levelUpTexture', 1024, scene, false)
+    const material = new StandardMaterial('levelUpMat', scene)
+    
+    // Configurer le texte
+    const ctx = texture.getContext()
+    texture.clear()
+    
+    // Dessiner le texte "LEVEL UP!"
+    const canvas2D = ctx as CanvasRenderingContext2D
+    canvas2D.font = 'bold 140px Arial'
+    canvas2D.fillStyle = '#ffdd00'
+    canvas2D.strokeStyle = '#000000'
+    canvas2D.lineWidth = 8
+    canvas2D.textAlign = 'center'
+    canvas2D.textBaseline = 'middle'
+    
+    const text = 'LEVEL UP'
+    canvas2D.strokeText(text, 512, 512)
+    canvas2D.fillText(text, 512, 512)
+    
+    texture.update()
+    
+    material.diffuseTexture = texture
+    material.emissiveTexture = texture
+    material.useAlphaFromDiffuseTexture = true
+    material.opacityTexture = texture
+    this.mesh.material = material
+  }
+
+  update(deltaTime: number): boolean {
+    this.lifetime += deltaTime
+
+    // Animer le mouvement vers le haut
+    this.mesh.position.addInPlace(this.velocity)
+
+    // Calculer l'opacité et le scale (fade out + shrink)
+    const progress = this.lifetime / this.maxLifetime
+    if (this.mesh.material && 'alpha' in this.mesh.material) {
+      this.mesh.material.alpha = 1 - progress
+    }
+
+    // Légère réduction de taille au fil du temps
+    const scale = this.startScale * (1 - progress * 0.3)
+    this.mesh.scaling.setAll(scale)
+
+    // Retourner true si le texte doit être supprimé
+    return this.lifetime >= this.maxLifetime
+  }
+
+  dispose() {
+    if (this.mesh.material) {
+      this.mesh.material.dispose()
+    }
+    this.mesh.dispose()
+  }
+}
 
 export class Player {
   mesh: Mesh
   gridPos: { x: number, y: number }
-  speed: number = 0.06
+  speed: number = 0.08
   lastAttackTime: number = 0
   attackCooldown: number = 1000 // 1 seconde en millisecondes
   attackRange: number = 1 // 1 case de distance
   slashLines: LinesMesh[] = [] // Pour les effets visuels d'attaque
+  scene: Scene // Stocker la scène pour créer les level up texts
+  levelUpTexts: LevelUpText[] = [] // Liste des textes de level up actifs
   
   // Stats du joueur
   xp: number = 0
   level: number = 1
+  totalDamageDealt: number = 0 // Dégâts totaux infligés dans cette run
+  attackDamage: number = 10 // Dégâts de l'auto-attaque (sera scalé par niveau)
   
   // Barre de cooldown
-  private cooldownBarBackground: Mesh
-  private cooldownBarFill: Mesh
+  private cooldownBarBackground!: Mesh
+  private cooldownBarFill!: Mesh
   private readonly barWidth = 0.8
   private readonly barHeight = 0.08
   private readonly barYOffset = 0.5 // Au-dessus du joueur
 
   constructor(scene: Scene, gridX: number, gridY: number) {
+    this.scene = scene
     // Create mesh
     this.mesh = MeshBuilder.CreateSphere('player', { diameter: 0.6 }, scene)
     this.mesh.position = gridToWorld(gridX, gridY)
@@ -91,6 +170,21 @@ export class Player {
     
     // Mettre à jour la position des barres
     this.updateCooldownBarPosition()
+    
+    // Mettre à jour les textes de level up
+    this.updateLevelUpTexts()
+  }
+
+  private updateLevelUpTexts() {
+    // Mettre à jour tous les textes de level up et supprimer les expirés
+    this.levelUpTexts = this.levelUpTexts.filter(levelUpText => {
+      const shouldRemove = levelUpText.update(16) // ~16ms par frame (60fps)
+      if (shouldRemove) {
+        levelUpText.dispose()
+        return false
+      }
+      return true
+    })
   }
 
   move(inputState: { [key: string]: boolean }, mapGenerator?: MapGenerator) {
@@ -197,10 +291,46 @@ export class Player {
   // Gagner de l'XP
   gainXP(amount: number) {
     this.xp += amount
-    console.log(`💎 +${amount} XP! Total: ${this.xp}`)
     
-    // Pour l'instant pas de level up, juste affichage
-    // Tu pourras ajouter un système de level plus tard
+    // Vérifier si on peut level-up
+    const xpNeeded = this.getXPNeededForLevel(this.level + 1)
+    if (this.xp >= xpNeeded) {
+      this.levelUp()
+    }
+  }
+
+  // Formule hybride pour XP requise par niveau
+  getXPNeededForLevel(level: number): number {
+    if (level <= 1) {
+      return 0 // Level 1 ne nécessite pas d'XP
+    } else if (level === 2) {
+      return 50 // Level 1→2: 50 XP
+    } else if (level === 3) {
+      return 100 // Level 2→3: 100 XP (50 + 50)
+    } else if (level === 4) {
+      return 200 // Level 3→4: 200 XP (100 + 100)
+    } else if (level <= 10) {
+      // Niveaux intermédiaires: progression de 100 XP par niveau
+      return 200 + (level - 4) * 100
+    } else {
+      // Niveaux avancés: croissance exponentielle
+      return Math.floor(800 + 500 * Math.pow(level - 10, 1.8))
+    }
+  }
+
+  private levelUp() {
+    this.level++
+    this.attackDamage += 1  // +10% de dégâts par niveau (+1 sur base 10)
+    
+    console.log(`🎉 LEVEL UP! You are now level ${this.level}!`)
+    console.log(`⚔️ Attack damage: ${this.attackDamage} (+10%)`)
+    
+    // Créer un texte "LEVEL UP!" flottant
+    const levelUpText = new LevelUpText(this.scene, this.mesh.position)
+    this.levelUpTexts.push(levelUpText)
+    
+    // L'XP en surplus est conservée pour le prochain niveau
+    // On ne reset pas l'XP à 0
   }
 
   getXP(): number {
@@ -211,8 +341,32 @@ export class Player {
     return this.level
   }
 
+  // Retourne l'XP nécessaire pour le niveau actuel
+  getCurrentLevelXP(): number {
+    return this.getXPNeededForLevel(this.level)
+  }
+
+  // Retourne l'XP nécessaire pour le prochain niveau
+  getNextLevelXP(): number {
+    return this.getXPNeededForLevel(this.level + 1)
+  }
+
+  getTotalDamage(): number {
+    return this.totalDamageDealt
+  }
+
+  getAttackDamage(): number {
+    return this.attackDamage
+  }
+
+  // Ajouter les dégâts infligés au compteur
+  addDamage(damage: number) {
+    this.totalDamageDealt += damage
+  }
+
   dispose() {
     this.slashLines.forEach((line: LinesMesh) => line.dispose())
+    this.levelUpTexts.forEach(text => text.dispose())
     this.cooldownBarBackground.dispose()
     this.cooldownBarFill.dispose()
     this.mesh.dispose()
