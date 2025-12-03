@@ -1,6 +1,7 @@
-import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh, DynamicTexture } from '@babylonjs/core'
+import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh, DynamicTexture, Texture } from '@babylonjs/core'
 import { gridToWorld, worldToGrid, MAP_SIZE } from '../utils/grid'
 import type { MapGenerator } from '../world/MapGenerator'
+import { generateRandomPerks, PerkType, type Perk } from '../systems/PerkSystem'
 
 // Classe pour gérer le texte "LEVEL UP!" flottant
 class LevelUpText {
@@ -92,6 +93,12 @@ export class Player {
   level: number = 1
   totalDamageDealt: number = 0 // Dégâts totaux infligés dans cette run
   attackDamage: number = 10 // Dégâts de l'auto-attaque (sera scalé par niveau)
+  maxLife: number = 100 // Points de vie maximum
+  attackSpeed: number = 1.0 // Vitesse d'attaque (multiplicateur, sera scalé par niveau/perks)
+  
+  // Système de perks
+  pendingPerks: Perk[] | null = null // Perks en attente de choix (null si aucun choix en cours)
+  onPerkChoiceReady: ((perks: Perk[]) => void) | null = null // Callback pour notifier GameScene
   
   // Barre de cooldown
   private cooldownBarBackground!: Mesh
@@ -102,13 +109,19 @@ export class Player {
 
   constructor(scene: Scene, gridX: number, gridY: number) {
     this.scene = scene
-    // Create mesh
-    this.mesh = MeshBuilder.CreateSphere('player', { diameter: 0.6 }, scene)
+    // Create mesh - plane avec sprite
+    this.mesh = MeshBuilder.CreatePlane('player', { size: 0.6, sideOrientation: Mesh.DOUBLESIDE }, scene)
     this.mesh.position = gridToWorld(gridX, gridY)
+    this.mesh.rotation.x = Math.PI / 2 // Rotation pour que le plan soit horizontal
 
-    // Material
+    // Material avec texture
     const material = new StandardMaterial('playerMat', scene)
-    material.diffuseColor = new Color3(0.9, 0.2, 0.2)
+    const texture = new Texture('/assets/player.png', scene)
+    texture.hasAlpha = true
+    material.diffuseTexture = texture
+    material.emissiveTexture = texture
+    material.emissiveColor = new Color3(1, 1, 1)
+    material.useAlphaFromDiffuseTexture = true
     this.mesh.material = material
 
     // Initial grid position
@@ -329,8 +342,37 @@ export class Player {
     const levelUpText = new LevelUpText(this.scene, this.mesh.position)
     this.levelUpTexts.push(levelUpText)
     
+    // Générer 3 perks aléatoires pour le choix
+    this.pendingPerks = generateRandomPerks()
+    
+    // Notifier GameScene qu'un choix de perk est disponible
+    if (this.onPerkChoiceReady) {
+      this.onPerkChoiceReady(this.pendingPerks)
+    }
+    
     // L'XP en surplus est conservée pour le prochain niveau
     // On ne reset pas l'XP à 0
+  }
+
+  // Appliquer un perk choisi par le joueur
+  applyPerk(perk: Perk) {
+    switch (perk.type) {
+      case PerkType.ATTACK_DAMAGE:
+        this.attackDamage += perk.value
+        console.log(`⚔️ Attack damage increased to ${this.attackDamage}`)
+        break
+      case PerkType.MAX_LIFE:
+        this.maxLife += perk.value
+        console.log(`❤️ Max life increased to ${this.maxLife}`)
+        break
+      case PerkType.ATTACK_SPEED:
+        this.attackSpeed += perk.value
+        console.log(`⚡ Attack speed increased to ${this.attackSpeed.toFixed(1)}x`)
+        break
+    }
+    
+    // Réinitialiser les perks en attente
+    this.pendingPerks = null
   }
 
   getXP(): number {
@@ -357,6 +399,14 @@ export class Player {
 
   getAttackDamage(): number {
     return this.attackDamage
+  }
+
+  getMaxLife(): number {
+    return this.maxLife
+  }
+
+  getAttackSpeed(): number {
+    return this.attackSpeed
   }
 
   // Ajouter les dégâts infligés au compteur

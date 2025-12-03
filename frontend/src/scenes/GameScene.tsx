@@ -3,11 +3,14 @@ import { Engine, Scene, FreeCamera, Vector3, HemisphericLight } from '@babylonjs
 import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
 import { MapGenerator } from '../world/MapGenerator'
+import PerkChoice from '../components/PerkChoice'
+import type { Perk } from '../systems/PerkSystem'
 
 function GameScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<Engine | null>(null)
   const sceneRef = useRef<Scene | null>(null)
+  const playerRef = useRef<Player | null>(null)
   
   // State pour afficher l'XP dans le HUD
   const [playerXP, setPlayerXP] = useState(0)
@@ -15,11 +18,16 @@ function GameScene() {
   const [totalDamage, setTotalDamage] = useState(0)
   const [currentLevelXP, setCurrentLevelXP] = useState(0)
   const [nextLevelXP, setNextLevelXP] = useState(0)
-  const [attackDamage, setAttackDamage] = useState(1)
+  const [attackDamage, setAttackDamage] = useState(10)
+  const [maxLife, setMaxLife] = useState(100)
+  const [attackSpeed, setAttackSpeed] = useState(1.0)
   
   // State pour le panneau technique
   const [techPanelOpen, setTechPanelOpen] = useState(false)
   const [monstersKilled, setMonstersKilled] = useState(0)
+  
+  // State pour le choix de perks
+  const [availablePerks, setAvailablePerks] = useState<Perk[] | null>(null)
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -41,6 +49,12 @@ function GameScene() {
     // Create player at a random walkable position
     const playerSpawn = mapGenerator.getRandomWalkablePosition()
     const player = new Player(scene, playerSpawn.x, playerSpawn.y)
+    playerRef.current = player
+
+    // Configurer le callback pour le choix de perks
+    player.onPerkChoiceReady = (perks: Perk[]) => {
+      setAvailablePerks(perks)
+    }
 
     // Camera setup (follows player with offset)
     const cameraOffsetY = 20
@@ -141,6 +155,8 @@ function GameScene() {
       setCurrentLevelXP(player.getCurrentLevelXP())
       setNextLevelXP(player.getNextLevelXP())
       setAttackDamage(player.getAttackDamage())
+      setMaxLife(player.getMaxLife())
+      setAttackSpeed(player.getAttackSpeed())
 
       scene.render()
     })
@@ -161,6 +177,21 @@ function GameScene() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+      
+      {/* Menu de choix de perks (affiché lors d'un level-up) */}
+      {availablePerks && (
+        <PerkChoice
+          perks={availablePerks}
+          onSelectPerk={(perk) => {
+            // Appliquer le perk au joueur
+            if (playerRef.current) {
+              playerRef.current.applyPerk(perk)
+            }
+            // Fermer le menu
+            setAvailablePerks(null)
+          }}
+        />
+      )}
       
       {/* HUD gauche (stats principales) */}
       <div style={{ 
@@ -246,6 +277,16 @@ function GameScene() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Attack damage:</span>
                   <span style={{ color: '#ff8844', fontWeight: 'bold' }}>{attackDamage}</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Attack speed:</span>
+                  <span style={{ color: '#44ff88', fontWeight: 'bold' }}>{attackSpeed.toFixed(1)}x</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Max life:</span>
+                  <span style={{ color: '#ff4488', fontWeight: 'bold' }}>{maxLife}</span>
                 </div>
               </div>
             </div>

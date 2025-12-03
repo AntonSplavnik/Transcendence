@@ -1,7 +1,7 @@
 import { Vector3 } from '@babylonjs/core'
 
 // Grid configuration constants
-export const GRID_SIZE = 20  // nombre de cases par côté
+export const GRID_SIZE = 60  // nombre de cases par côté (20 → 60 = x3)
 export const TILE_SIZE = 1   // taille d'une case en unités Babylon
 export const MAP_SIZE = GRID_SIZE * TILE_SIZE
 
