@@ -1,0 +1,8 @@
+{
+    "plugins": [],
+    "version": "5.2.3",
+    "packageManager": "yarn",
+    "lastOpenedScene": "/assets/example.scene",
+    "compressedTexturesEnabled": false,
+    "compressedTexturesEnabledInPreview": false
+}

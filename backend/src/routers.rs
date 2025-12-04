@@ -4,9 +4,16 @@ use salvo::prelude::*;
 mod auth;
 
 pub fn root() -> Router {
+    let _ = dbg!(std::fs::exists(&crate::config::get().serve_dir));
     let router = Router::new()
         .hoop(Logger::new())
-        .get(StaticDir::new("www").defaults("index.html"))
+        .push(
+            Router::with_path("{*path}").get(
+                StaticDir::new(&crate::config::get().serve_dir)
+                    .defaults("index.html")
+                    .auto_list(true),
+            ),
+        )
         .push(
             Router::with_path("api")
                 .push(Router::with_path("auth").push(auth::router())),
