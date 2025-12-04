@@ -80,6 +80,15 @@ export class Enemy {
   scene: Scene // Stocker la scène pour créer les damage texts
   damageTexts: DamageText[] = [] // Liste des textes de dégâts actifs
   
+  // Système d'attaque
+  lastAttackTime: number = Date.now()
+  attackCooldown: number = 5000 // 5 secondes en millisecondes
+  attackRange: number = 1.0 // 1 tile de distance pour attaquer
+  attackDamage: number = 5 // Dégâts de la morsure
+  attackWindupTime: number = 1000 // 0.5 seconde avant de mordre
+  isWindingUp: boolean = false // En train de préparer l'attaque
+  windupStartTime: number = 0 // Quand le windup a commencé
+  
   // Pathfinding
   private path: number[][] = [] // Chemin calculé [x, y][]
   private pathUpdateCooldown: number = 0
@@ -263,6 +272,84 @@ export class Enemy {
       this.gridPos.x = grid.x
       this.gridPos.y = grid.y
     }
+  }
+
+  // Attaque du joueur (morsure avec délai de 0.5 sec)
+  tryAttackPlayer(playerPosition: Vector3, onPlayerDamaged: (damage: number) => void): boolean {
+    const currentTime = Date.now()
+    
+    // Si on est en train de préparer l'attaque
+    if (this.isWindingUp) {
+      const windupElapsed = currentTime - this.windupStartTime
+      
+      if (windupElapsed >= this.attackWindupTime) {
+        // Le windup est terminé, infliger les dégâts !
+        this.isWindingUp = false
+        this.lastAttackTime = currentTime
+        
+        // Infliger des dégâts au joueur
+        onPlayerDamaged(this.attackDamage)
+        
+        // Créer un effet visuel de morsure
+        this.createBiteEffect(playerPosition)
+        
+        console.log('🦷 Morsure infligée!')
+        return true
+      }
+      
+      // Toujours en windup, continuer à afficher l'effet d'alerte
+      return false
+    }
+    
+    // Vérifier le cooldown
+    if (currentTime - this.lastAttackTime < this.attackCooldown) {
+      return false
+    }
+
+    // Vérifier la distance
+    const dx = playerPosition.x - this.mesh.position.x
+    const dz = playerPosition.z - this.mesh.position.z
+    const distance = Math.sqrt(dx * dx + dz * dz)
+
+    if (distance <= this.attackRange) {
+      // Démarrer le windup (0.5 sec avant l'attaque)
+      this.isWindingUp = true
+      this.windupStartTime = currentTime
+      
+      console.log('⚠️ Ennemi prépare une morsure...')
+      return false
+    }
+
+    return false
+  }
+
+  // Effet visuel de morsure (lignes rouges autour du joueur)
+  private createBiteEffect(playerPosition: Vector3) {
+    const biteLines: Mesh[] = []
+    const numLines = 8 // Nombre de "dents"
+    const lineLength = 0.4
+    
+    for (let i = 0; i < numLines; i++) {
+      const angle = (Math.PI * 2 * i) / numLines
+      const startX = playerPosition.x + Math.cos(angle) * lineLength
+      const startZ = playerPosition.z + Math.sin(angle) * lineLength
+      const endX = playerPosition.x + Math.cos(angle) * (lineLength * 0.3)
+      const endZ = playerPosition.z + Math.sin(angle) * (lineLength * 0.3)
+
+      const points = [
+        new Vector3(startX, playerPosition.y + 0.2, startZ),
+        new Vector3(endX, playerPosition.y + 0.2, endZ)
+      ]
+
+      const line = MeshBuilder.CreateLines(`bite_${i}`, { points }, this.scene)
+      line.color = new Color3(0.9, 0.1, 0.1) // Rouge sang
+      biteLines.push(line)
+    }
+
+    // Supprimer l'effet après 150ms
+    setTimeout(() => {
+      biteLines.forEach(line => line.dispose())
+    }, 150)
   }
 
   takeDamage(damage: number): boolean {

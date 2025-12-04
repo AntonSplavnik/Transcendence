@@ -94,6 +94,7 @@ export class Player {
   totalDamageDealt: number = 0 // Dégâts totaux infligés dans cette run
   attackDamage: number = 10 // Dégâts de l'auto-attaque (sera scalé par niveau)
   maxLife: number = 100 // Points de vie maximum
+  life: number = 100 // Points de vie actuels
   attackSpeed: number = 1.0 // Vitesse d'attaque (multiplicateur, sera scalé par niveau/perks)
   
   // Système de perks
@@ -205,9 +206,9 @@ export class Player {
     const oldX = this.mesh.position.x
     const oldZ = this.mesh.position.z
     
-    // Apply movement
-    if (inputState['arrowup'] || inputState['w'] || inputState['z']) this.mesh.position.z -= this.speed
-    if (inputState['arrowdown'] || inputState['s']) this.mesh.position.z += this.speed
+    // Apply movement (haut/bas inversés)
+    if (inputState['arrowup'] || inputState['w'] || inputState['z']) this.mesh.position.z += this.speed
+    if (inputState['arrowdown'] || inputState['s']) this.mesh.position.z -= this.speed
     if (inputState['arrowleft'] || inputState['a'] || inputState['q']) this.mesh.position.x -= this.speed
     if (inputState['arrowright'] || inputState['d']) this.mesh.position.x += this.speed
 
@@ -235,6 +236,10 @@ export class Player {
 
   getPosition(): Vector3 {
     return this.mesh.position
+  }
+
+  getGridPosition(): { x: number, y: number } {
+    return { x: this.gridPos.x, y: this.gridPos.y }
   }
 
   // Auto-attack enemies in range
@@ -412,6 +417,32 @@ export class Player {
   // Ajouter les dégâts infligés au compteur
   addDamage(damage: number) {
     this.totalDamageDealt += damage
+  }
+
+  // Recevoir des dégâts
+  takeDamage(damage: number): boolean {
+    this.life -= damage
+    console.log(`🩸 Joueur reçoit ${damage} dégâts! Vie restante: ${this.life}/${this.maxLife}`)
+    
+    // Retourner true si le joueur est mort
+    return this.life <= 0
+  }
+
+  getLife(): number {
+    return this.life
+  }
+
+  // Soigner le joueur (fontaine)
+  heal(amount: number) {
+    const oldLife = this.life
+    this.life = Math.min(this.life + amount, this.maxLife)
+    const healed = this.life - oldLife
+    console.log(`💚 Joueur soigné de ${healed} PVs! Vie: ${this.life}/${this.maxLife}`)
+  }
+
+  // Soigner complètement le joueur
+  fullHeal() {
+    this.heal(this.maxLife)
   }
 
   dispose() {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Engine, Scene, FreeCamera, Vector3, HemisphericLight } from '@babylonjs/core'
+import { useNavigate } from 'react-router-dom'
+import { Engine, Scene, FreeCamera, Vector3, HemisphericLight, Color3 } from '@babylonjs/core'
 import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
 import { MapGenerator } from '../world/MapGenerator'
@@ -11,6 +12,7 @@ function GameScene() {
   const engineRef = useRef<Engine | null>(null)
   const sceneRef = useRef<Scene | null>(null)
   const playerRef = useRef<Player | null>(null)
+  const navigate = useNavigate()
   
   // State pour afficher l'XP dans le HUD
   const [playerXP, setPlayerXP] = useState(0)
@@ -20,6 +22,7 @@ function GameScene() {
   const [nextLevelXP, setNextLevelXP] = useState(0)
   const [attackDamage, setAttackDamage] = useState(10)
   const [maxLife, setMaxLife] = useState(100)
+  const [life, setLife] = useState(100)
   const [attackSpeed, setAttackSpeed] = useState(1.0)
   
   // State pour le panneau technique
@@ -29,8 +32,16 @@ function GameScene() {
   // State pour le choix de perks
   const [availablePerks, setAvailablePerks] = useState<Perk[] | null>(null)
 
+  // State pour le Game Over
+  const [isGameOver, setIsGameOver] = useState(false)
+  const [gameStartTime, setGameStartTime] = useState<number>(0)
+  const [gameEndTime, setGameEndTime] = useState<number>(0)
+
   useEffect(() => {
     if (!canvasRef.current) return
+
+    // Initialiser le temps de départ
+    setGameStartTime(Date.now())
 
     // Create Babylon engine and scene
     const engine = new Engine(canvasRef.current, true)
@@ -39,8 +50,11 @@ function GameScene() {
     const scene = new Scene(engine)
     sceneRef.current = scene
 
-    // Simple ambient light (très performant)
-    new HemisphericLight('light', new Vector3(0, 1, 0), scene)
+    // Désactiver le système de lumière par défaut pour un éclairage complètement uniforme
+    const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
+    light.intensity = 1.0
+    light.groundColor = new Color3(1, 1, 1) // Même couleur en haut et en bas = pas de gradient
+    light.specular = new Color3(0, 0, 0) // Désactiver les reflets spéculaires
 
     // Generate map (ground + grid + walls)
     const mapGenerator = new MapGenerator(scene)
@@ -73,7 +87,7 @@ function GameScene() {
     // Wave spawning system
     let waveNumber = 1
     let lastWaveTime = Date.now()
-    const WAVE_INTERVAL = 10000 // 10 secondes
+    const WAVE_INTERVAL = 50000 // 10 secondes
     const ENEMIES_PER_WAVE = 5
 
     const spawnWave = () => {
@@ -140,6 +154,40 @@ function GameScene() {
       // Update enemies (AI with wall collision)
       enemies.forEach(enemy => {
         enemy.update(player.getPosition(), mapGenerator)
+        
+        // Les ennemis attaquent le joueur au corps à corps
+        enemy.tryAttackPlayer(player.getPosition(), (damage) => {
+          const isDead = player.takeDamage(damage)
+          if (isDead) {
+            console.log('💀 Le joueur est mort!')
+            setIsGameOver(true)
+            setGameEndTime(Date.now())
+            engine.stopRenderLoop() // Arrêter le jeu
+          }
+        })
+      })
+
+      // Update fountains (vérifier si le joueur est dessus)
+      const playerGridPos = player.getGridPosition()
+      mapGenerator.fountains.forEach(fountain => {
+        const isOnFountain = fountain.checkPlayerProximity(playerGridPos)
+        
+        if (isOnFountain && fountain.hasCharge) {
+          // Le joueur est sur la fontaine
+          if (!fountain.isActivating) {
+            fountain.startActivation()
+          }
+          
+          // Mettre à jour l'activation
+          const { completed } = fountain.update()
+          if (completed) {
+            // Soigner le joueur complètement
+            player.fullHeal()
+          }
+        } else if (fountain.isActivating) {
+          // Le joueur a quitté la fontaine
+          fountain.cancelActivation()
+        }
       })
 
       // Update camera to follow player
@@ -156,6 +204,7 @@ function GameScene() {
       setNextLevelXP(player.getNextLevelXP())
       setAttackDamage(player.getAttackDamage())
       setMaxLife(player.getMaxLife())
+      setLife(player.getLife())
       setAttackSpeed(player.getAttackSpeed())
 
       scene.render()
@@ -204,7 +253,7 @@ function GameScene() {
         borderRadius: '8px',
         fontFamily: 'monospace'
       }}>
-        <div style={{ color: '#ff4444' }}>LIFE: 100</div>
+        <div style={{ color: '#ff4444' }}>LIFE: {life} / {maxLife}</div>
         <div style={{ color: '#4488ff' }}>XP: {playerXP - currentLevelXP} / {nextLevelXP - currentLevelXP}</div>
         <div style={{ color: '#ffcc00' }}>LEVEL: {playerLevel}</div>
         <div style={{ fontSize: '0.85em', marginTop: '10px', opacity: 0.8, color: 'white' }}>
@@ -317,6 +366,167 @@ function GameScene() {
           </div>
         )}
       </div>
+
+      {/* Écran de Game Over */}
+      {isGameOver && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          animation: 'fadeIn 0.5s ease'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+            border: '3px solid #ff4444',
+            borderRadius: '15px',
+            padding: '40px',
+            maxWidth: '500px',
+            width: '90%',
+            fontFamily: 'monospace',
+            color: 'white',
+            boxShadow: '0 0 30px rgba(255, 68, 68, 0.5)',
+            animation: 'slideIn 0.5s ease'
+          }}>
+            {/* Titre */}
+            <h1 style={{
+              textAlign: 'center',
+              color: '#ff4444',
+              fontSize: '48px',
+              margin: '0 0 30px 0',
+              textShadow: '0 0 10px rgba(255, 68, 68, 0.8)',
+              letterSpacing: '3px'
+            }}>
+              GAME OVER
+            </h1>
+
+            {/* Statistiques de la partie */}
+            <div style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              padding: '20px',
+              borderRadius: '10px',
+              marginBottom: '30px',
+              border: '1px solid rgba(0, 255, 0, 0.3)'
+            }}>
+              <h2 style={{
+                color: '#00ff00',
+                fontSize: '20px',
+                marginTop: 0,
+                marginBottom: '20px',
+                textAlign: 'center',
+                letterSpacing: '2px'
+              }}>
+                RUN STATISTICS
+              </h2>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px' }}>
+                  <span>⏱️ Time survived:</span>
+                  <span style={{ color: '#44aaff', fontWeight: 'bold' }}>
+                    {(() => {
+                      const duration = Math.floor((gameEndTime - gameStartTime) / 1000)
+                      const minutes = Math.floor(duration / 60)
+                      const seconds = duration % 60
+                      return `${minutes}:${seconds.toString().padStart(2, '0')}`
+                    })()}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px' }}>
+                  <span>⚔️ Monsters killed:</span>
+                  <span style={{ color: '#ff4444', fontWeight: 'bold' }}>{monstersKilled}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px' }}>
+                  <span>💥 Total damage:</span>
+                  <span style={{ color: '#ffaa44', fontWeight: 'bold' }}>{totalDamage}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px' }}>
+                  <span>⭐ Level reached:</span>
+                  <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>{playerLevel}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px' }}>
+                  <span>💎 Total XP earned:</span>
+                  <span style={{ color: '#4488ff', fontWeight: 'bold' }}>{playerXP}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Boutons */}
+            <div style={{
+              display: 'flex',
+              gap: '15px',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  backgroundColor: '#00aa00',
+                  color: 'white',
+                  border: '2px solid #00ff00',
+                  padding: '15px 30px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 0 10px rgba(0, 255, 0, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#00ff00'
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.6)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#00aa00'
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.3)'
+                }}
+              >
+                PLAY AGAIN
+              </button>
+
+              <button
+                onClick={() => navigate('/')}
+                style={{
+                  backgroundColor: '#aa0000',
+                  color: 'white',
+                  border: '2px solid #ff4444',
+                  padding: '15px 30px',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 0 10px rgba(255, 68, 68, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff4444'
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.6)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#aa0000'
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(255, 68, 68, 0.3)'
+                }}
+              >
+                MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

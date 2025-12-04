@@ -1,6 +1,9 @@
-import { Scene, MeshBuilder, StandardMaterial, Color3, Vector3, Mesh, Texture } from '@babylonjs/core'
+import { Scene, MeshBuilder, StandardMaterial, Color3, Vector3, Mesh } from '@babylonjs/core'
 import { GRID_SIZE, TILE_SIZE, MAP_SIZE } from '../utils/grid'
 import * as ROT from 'rot-js'
+import { Chest } from '../entities/Chest'
+import { Fountain } from '../entities/Fountain'
+import { GroundDecoration } from '../entities/GroundDecoration'
 
 export class MapGenerator {
   scene: Scene
@@ -9,6 +12,9 @@ export class MapGenerator {
   gridLines: Mesh[] = []
   dungeonMap: number[][] = [] // 0 = walkable, 1 = wall
   rooms: any[] = [] // Stocker les salles pour spawn spécial
+  chests: Chest[] = [] // Coffres générés
+  fountains: Fountain[] = [] // Fontaines de vie générées
+  groundDecorations: GroundDecoration[] = [] // Décorations de sol
 
   constructor(scene: Scene) {
     this.scene = scene
@@ -16,9 +22,12 @@ export class MapGenerator {
 
   generateMap() {
     this.generateDungeon()
-    this.createGround()
+    // this.createGround() // Sol de base désactivé - on garde juste les décorations
     this.createGrid()
     this.createDungeonWalls()
+    this.generateChests() // Générer les coffres après la création du donjon
+    this.generateFountains() // Générer les fontaines de vie
+    this.generateGroundDecorations() // Ajouter des décorations au sol
   }
 
   private generateDungeon() {
@@ -29,7 +38,7 @@ export class MapGenerator {
 
     // ========== CHOISIS TON ALGORITHME ==========
     
-    // 🏰 OPTION 1: DIGGER (Salles + couloirs) - ACTUEL
+    //🏰 OPTION 1: DIGGER (Salles + couloirs) - ACTUEL
     // const digger = new ROT.Map.Digger(GRID_SIZE, GRID_SIZE, {
     //   roomWidth: [4, 8],        // [min, max] largeur des salles
     //   roomHeight: [4, 8],       // [min, max] hauteur des salles
@@ -51,27 +60,27 @@ export class MapGenerator {
         this.dungeonMap[y][x] = value
       })
     }
-    this.rooms = []  // Pas de salles avec Cellular
-    /*
+    this.rooms = []
+
+    
     // 🎲 OPTION 3: ROGUE (Grille de salles)
-    const rogue = new ROT.Map.Rogue(GRID_SIZE, GRID_SIZE, {
-      cellWidth: 7,
-      cellHeight: 7,
-      roomWidth: [3, 5],
-      roomHeight: [3, 5]
-    })
-    rogue.create((x, y, value) => {
-      this.dungeonMap[y][x] = value
-    })
-    this.rooms = rogue.getRooms()
+    // const rogue = new ROT.Map.Rogue(GRID_SIZE, GRID_SIZE, {
+    //   cellWidth: 7,
+    //   cellHeight: 7,
+    //   roomWidth: [3, 5],
+    //   roomHeight: [3, 5]
+    // })
+    // rogue.create((x, y, value) => {
+    //   this.dungeonMap[y][x] = value
+    // })
+    // this.rooms = []
     
     // 🌀 OPTION 4: MAZE (Labyrinthe pur)
-    const maze = new ROT.Map.DividedMaze(GRID_SIZE, GRID_SIZE)
-    maze.create((x, y, value) => {
-      this.dungeonMap[y][x] = value
-    })
-    this.rooms = []  // Pas de salles
-    */
+    // const maze = new ROT.Map.DividedMaze(GRID_SIZE, GRID_SIZE)
+    // maze.create((x, y, value) => {
+    //   this.dungeonMap[y][x] = value
+    // })
+    // this.rooms = []  // Pas de salles
 
     console.log(`🏰 Dungeon generated! Rooms: ${this.rooms.length}`)
   }
@@ -139,18 +148,91 @@ export class MapGenerator {
     return this.dungeonMap[y][x] === 0
   }
 
-  private createGround() {
-    // Create ground
-    this.ground = MeshBuilder.CreateGround('ground', { width: MAP_SIZE, height: MAP_SIZE }, this.scene)
-    const groundMat = new StandardMaterial('groundMat', this.scene)
+  // Générer 1-2 coffres dans le donjon
+  generateChests() {
+    const numChests = Math.random() < 0.5 ? 1 : 2 // 1 ou 2 coffres
     
-    // Apply texture
-    const texture = new Texture('/assets/ground.png', this.scene)
-    texture.uScale = GRID_SIZE // Repeat texture for each grid cell
-    texture.vScale = GRID_SIZE
-    groundMat.diffuseTexture = texture
+    for (let i = 0; i < numChests; i++) {
+      // Spawn les coffres dans des salles au milieu du donjon (pas la première ni la dernière)
+      let position
+      if (this.rooms.length > 2) {
+        const roomIndex = 1 + Math.floor(Math.random() * (this.rooms.length - 2))
+        position = this.getRandomPositionInRoom(roomIndex)
+      } else {
+        // Fallback si pas assez de salles
+        position = this.getRandomWalkablePosition()
+      }
+      
+      const chest = new Chest(this.scene, position.x, position.y)
+      this.chests.push(chest)
+      console.log(`📦 Coffre spawné à (${position.x}, ${position.y})`)
+    }
+  }
+
+  // Générer 4 fontaines de vie dans le donjon
+  generateFountains() {
+    const numFountains = 4 // Toujours 4 fontaines
+    const spawnedPositions: { x: number, y: number }[] = [] // Pour éviter de spawn au même endroit
     
-    this.ground.material = groundMat
+    for (let i = 0; i < numFountains; i++) {
+      let position: { x: number, y: number }
+      let attempts = 0
+      const maxAttempts = 50
+      
+      // Trouver une position unique
+      do {
+        if (this.rooms.length > 2) {
+          // Spawn dans des salles aléatoires
+          const roomIndex = Math.floor(Math.random() * this.rooms.length)
+          position = this.getRandomPositionInRoom(roomIndex)
+        } else {
+          position = this.getRandomWalkablePosition()
+        }
+        attempts++
+      } while (
+        spawnedPositions.some(p => p.x === position.x && p.y === position.y) &&
+        attempts < maxAttempts
+      )
+      
+      spawnedPositions.push(position)
+      const fountain = new Fountain(this.scene, position.x, position.y)
+      this.fountains.push(fountain)
+      console.log(`💧 Fontaine spawné à (${position.x}, ${position.y})`)
+    }
+  }
+
+  // Générer des décorations de sol aléatoires (15-25% des tiles walkable)
+  generateGroundDecorations() {
+    const decorationDensity = 0.15 + Math.random() * 10 // 15-25%
+    const walkableTiles: { x: number, y: number }[] = []
+    
+    // Récupérer toutes les tiles walkable
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        if (this.dungeonMap[y][x] === 0) {
+          walkableTiles.push({ x, y })
+        }
+      }
+    }
+    
+    // Calculer le nombre de décorations
+    const numDecorations = Math.floor(walkableTiles.length * decorationDensity)
+    
+    // Mélanger les tiles walkable
+    for (let i = walkableTiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [walkableTiles[i], walkableTiles[j]] = [walkableTiles[j], walkableTiles[i]]
+    }
+    
+    // Placer les décorations
+    for (let i = 0; i < numDecorations && i < walkableTiles.length; i++) {
+      const tile = walkableTiles[i]
+      const textureIndex = Math.floor(Math.random() * 3) + 1 // 1, 2 ou 3
+      const decoration = new GroundDecoration(this.scene, tile.x, tile.y, textureIndex)
+      this.groundDecorations.push(decoration)
+    }
+    
+    console.log(`🌿 ${numDecorations} décorations de sol générées`)
   }
 
   private createGrid() {
@@ -217,5 +299,8 @@ export class MapGenerator {
     this.ground?.dispose()
     this.walls.forEach(wall => wall.dispose())
     this.gridLines.forEach(line => line.dispose())
+    this.chests.forEach(chest => chest.dispose())
+    this.fountains.forEach(fountain => fountain.dispose())
+    this.groundDecorations.forEach(deco => deco.dispose())
   }
 }

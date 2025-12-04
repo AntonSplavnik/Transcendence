@@ -9,9 +9,9 @@ function PerkChoice({ perks, onSelectPerk }: PerkChoiceProps) {
   return (
     <div style={{
       position: 'absolute',
-      top: '50%',
+      bottom: '50px',
       left: '50%',
-      transform: 'translate(-50%, -50%)',
+      transform: 'translate(-50%)',
       zIndex: 1000,
       display: 'flex',
       gap: '20px',
