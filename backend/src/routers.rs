@@ -1,6 +1,8 @@
 use salvo::oapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use salvo::prelude::*;
 
+use crate::stream::connect_stream;
+
 mod auth;
 
 pub fn root() -> Router {
@@ -9,7 +11,8 @@ pub fn root() -> Router {
         .get(StaticDir::new("www").defaults("index.html"))
         .push(
             Router::with_path("api")
-                .push(Router::with_path("auth").push(auth::router())),
+                .push(Router::with_path("auth").push(auth::router()))
+                .push(Router::with_path("wt").goal(connect_stream)),
         );
     let doc = OpenApi::new("Transcendence API", "0.0.1")
         .add_security_scheme(

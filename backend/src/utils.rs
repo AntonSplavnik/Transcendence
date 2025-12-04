@@ -6,6 +6,8 @@ use argon2::{
 };
 use validator::ValidationError;
 
+pub mod adaptive_buffer;
+
 static RANDOM_PASSWORD_HASH: LazyLock<String> = LazyLock::new(|| {
     hash_password("dummy password")
         .expect("Failed to generate dummy password hash")
