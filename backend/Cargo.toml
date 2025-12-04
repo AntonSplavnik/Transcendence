@@ -70,3 +70,10 @@ diesel = { version = "2", features = [
 ] }
 # rand gen
 rand = "0.9"
+tokio-util = { version = "0.7.17", features = ["codec"] }
+futures = "0.3.31"
+bytes = "1.11.0"
+ciborium = "0.2.2"
+zstd = "0.13.3"
+h3-quinn = "0.0.10"
+dashmap = "6"

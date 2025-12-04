@@ -15,6 +15,7 @@ mod hoops;
 mod models;
 mod routers;
 mod schema;
+mod stream;
 mod utils;
 
 mod error;
