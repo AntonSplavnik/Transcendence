@@ -16,7 +16,7 @@ export class Fountain {
     this.gridPos = { x: gridX, y: gridY }
 
     // Créer un plan billboard pour la fontaine
-    this.mesh = MeshBuilder.CreatePlane(`fountain_${Math.random()}`, { size: 0.9 }, scene)
+    this.mesh = MeshBuilder.CreatePlane(`fountain_${Math.random()}`, { size: 0.6 }, scene)
     this.mesh.position = gridToWorld(gridX, gridY)
     this.mesh.position.y = 0.45 // Surélevé comme les coffres
     this.mesh.billboardMode = Mesh.BILLBOARDMODE_ALL
@@ -105,12 +105,13 @@ export class Fountain {
       this.hasCharge = false
       this.isActivating = false
       
-      // Changer l'apparence de la fontaine (désactivée)
-      if (this.mesh.material && 'emissiveColor' in this.mesh.material) {
-        this.mesh.material.emissiveColor = new Color3(0.1, 0.1, 0.1) // Gris foncé
-      }
-      if (this.mesh.material && 'alpha' in this.mesh.material) {
-        this.mesh.material.alpha = 0.5 // Semi-transparent
+      // Changer la texture pour montrer une fontaine vide
+      if (this.mesh.material && this.mesh.material instanceof StandardMaterial) {
+        const emptyTexture = new Texture('/assets/fountain_empty.png', this.mesh.material.getScene())
+        emptyTexture.hasAlpha = true
+        this.mesh.material.diffuseTexture = emptyTexture
+        this.mesh.material.emissiveTexture = emptyTexture
+        this.mesh.material.emissiveColor = new Color3(0.3, 0.3, 0.3) // Gris terne
       }
       
       // Cacher le cercle d'activation

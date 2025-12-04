@@ -2,6 +2,10 @@ import { Scene, MeshBuilder, StandardMaterial, Color3, Mesh, Vector3, LinesMesh,
 import { gridToWorld, worldToGrid, MAP_SIZE } from '../utils/grid'
 import type { MapGenerator } from '../world/MapGenerator'
 import { generateRandomPerks, PerkType, type Perk } from '../systems/PerkSystem'
+import { Weapon } from '../weapons/Weapon'
+import { MeleeWeapon } from '../weapons/MeleeWeapon'
+import { BowWeapon } from '../weapons/BowWeapon'
+import { OrbWeapon } from '../weapons/OrbWeapon'
 
 // Classe pour gérer le texte "LEVEL UP!" flottant
 class LevelUpText {
@@ -88,6 +92,10 @@ export class Player {
   scene: Scene // Stocker la scène pour créer les level up texts
   levelUpTexts: LevelUpText[] = [] // Liste des textes de level up actifs
   
+  // Système d'armes
+  weapons: Weapon[] = [] // Jusqu'à 3 armes équipées
+  maxWeapons: number = 3
+  
   // Stats du joueur
   xp: number = 0
   level: number = 1
@@ -130,6 +138,25 @@ export class Player {
 
     // Créer la barre de cooldown
     this.createCooldownBar(scene)
+    
+    // Initialiser les armes de départ
+    this.initializeWeapons()
+  }
+
+  private initializeWeapons() {
+    // Arme de base : attaque au corps-à-corps
+    const meleeWeapon = new MeleeWeapon(this.scene)
+    this.weapons.push(meleeWeapon)
+    
+    // Pour les tests : équiper l'arc directement
+    const bowWeapon = new BowWeapon(this.scene)
+    this.weapons.push(bowWeapon)
+    
+    // Pour les tests : équiper la baguette magique avec orbes
+    const orbWeapon = new OrbWeapon(this.scene)
+    this.weapons.push(orbWeapon)
+    
+    console.log(`⚔️ ${this.weapons.length} armes équipées`)
   }
 
   private createCooldownBar(scene: Scene) {
@@ -201,6 +228,38 @@ export class Player {
     })
   }
 
+  update(deltaTime: number, enemies?: any[]) {
+    // Mettre à jour toutes les armes (animations, projectiles, etc.)
+    // Passer le joueur et les ennemis pour les armes qui en ont besoin (comme OrbWeapon)
+    this.weapons.forEach(weapon => weapon.update(deltaTime, this, enemies))
+    
+    // Mettre à jour les textes de level up
+    this.levelUpTexts = this.levelUpTexts.filter(text => {
+      text.lifetime += deltaTime
+      if (text.lifetime >= text.maxLifetime) {
+        text.mesh.dispose()
+        return false
+      }
+      
+      // Animer le texte (montée + fade out)
+      text.mesh.position.addInPlace(text.velocity.scale(deltaTime / 16.67))
+      
+      const progress = text.lifetime / text.maxLifetime
+      const scale = text.startScale * (1 + progress * 0.5)
+      text.mesh.scaling.setAll(scale)
+      
+      const material = text.mesh.material as StandardMaterial
+      if (material) {
+        material.alpha = 1 - progress
+      }
+      
+      return true
+    })
+    
+    // Mettre à jour la barre de cooldown
+    this.updateCooldownBar()
+  }
+
   move(inputState: { [key: string]: boolean }, mapGenerator?: MapGenerator) {
     // Save current position in case we need to revert
     const oldX = this.mesh.position.x
@@ -242,68 +301,34 @@ export class Player {
     return { x: this.gridPos.x, y: this.gridPos.y }
   }
 
-  // Auto-attack enemies in range
-  autoAttack(enemies: any[], scene: Scene): any[] {
+  // Auto-attack avec toutes les armes équipées
+  autoAttack(enemies: any[]): any[] {
     const currentTime = Date.now()
-    
-    // Check if attack is on cooldown
-    if (currentTime - this.lastAttackTime < this.attackCooldown) {
-      return []
-    }
+    const allHitEnemies: any[] = []
 
-    const hitEnemies: any[] = []
-
-    // Find enemies within attack range (1 grid cell)
-    enemies.forEach(enemy => {
-      const dx = Math.abs(enemy.gridPos.x - this.gridPos.x)
-      const dy = Math.abs(enemy.gridPos.y - this.gridPos.y)
+    // Attaquer avec chaque arme équipée
+    this.weapons.forEach(weapon => {
+      const hitEnemies = weapon.attack(this, enemies, currentTime)
       
-      // If enemy is within 1 grid cell (adjacent or diagonal)
-      if (dx <= this.attackRange && dy <= this.attackRange && (dx + dy) > 0) {
-        hitEnemies.push(enemy)
+      // Pour les armes à projectiles (comme l'arc), récupérer les ennemis touchés
+      if ('getHitEnemies' in weapon && typeof weapon.getHitEnemies === 'function') {
+        const projectileHits = (weapon as any).getHitEnemies()
+        projectileHits.forEach((enemy: any) => {
+          if (!allHitEnemies.includes(enemy)) {
+            allHitEnemies.push(enemy)
+          }
+        })
       }
-    })
-
-    // If we hit at least one enemy, trigger cooldown and show slash
-    if (hitEnemies.length > 0) {
-      this.lastAttackTime = currentTime
-      this.createSlashEffect(hitEnemies, scene)
-    }
-
-    return hitEnemies
-  }
-
-  private createSlashEffect(hitEnemies: any[], scene: Scene) {
-    // Nettoyer les anciens slashes
-    this.slashLines.forEach((line: LinesMesh) => line.dispose())
-    this.slashLines = []
-
-    const playerPos = this.mesh.position
-
-    // Créer une ligne noire pour chaque ennemi touché
-    hitEnemies.forEach(enemy => {
-      const enemyPos = enemy.mesh.position
       
-      const points = [
-        playerPos.clone(),
-        enemyPos.clone()
-      ]
-
-      const line = MeshBuilder.CreateLines(
-        'slash',
-        { points },
-        scene
-      )
-      line.color = new Color3(0, 0, 0) // Trait noir
-
-      this.slashLines.push(line)
+      // Ajouter les ennemis touchés directement
+      hitEnemies.forEach(enemy => {
+        if (!allHitEnemies.includes(enemy)) {
+          allHitEnemies.push(enemy)
+        }
+      })
     })
 
-    // Supprimer les slashes après 100ms (effet rapide)
-    setTimeout(() => {
-      this.slashLines.forEach((line: LinesMesh) => line.dispose())
-      this.slashLines = []
-    }, 100)
+    return allHitEnemies
   }
 
   // Gagner de l'XP
@@ -412,6 +437,14 @@ export class Player {
 
   getAttackSpeed(): number {
     return this.attackSpeed
+  }
+
+  // Obtenir les armes équipées pour le HUD
+  getEquippedWeapons(): Array<{ name: string; icon: string }> {
+    return this.weapons.map(weapon => ({
+      name: weapon.name,
+      icon: weapon.icon
+    }))
   }
 
   // Ajouter les dégâts infligés au compteur

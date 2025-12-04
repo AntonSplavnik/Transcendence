@@ -8,7 +8,7 @@ export class GroundDecoration {
     // Créer un petit plan au sol
     this.mesh = MeshBuilder.CreatePlane(`groundDeco_${Math.random()}`, { size: 1.0 }, scene)
     const worldPos = gridToWorld(gridX, gridY)
-    this.mesh.position.set(worldPos.x, 0.0, worldPos.z) // Légèrement au-dessus du sol
+    this.mesh.position.set(worldPos.x, -0.1, worldPos.z) // Légèrement au-dessus du sol
     this.mesh.rotation.x = Math.PI / 2 // Rotation pour être horizontal
 
     // Matériau avec texture

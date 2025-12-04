@@ -4,6 +4,7 @@ import * as ROT from 'rot-js'
 import { Chest } from '../entities/Chest'
 import { Fountain } from '../entities/Fountain'
 import { GroundDecoration } from '../entities/GroundDecoration'
+import { WallDecoration, WallDirection } from '../entities/WallDecoration'
 
 export class MapGenerator {
   scene: Scene
@@ -15,6 +16,7 @@ export class MapGenerator {
   chests: Chest[] = [] // Coffres générés
   fountains: Fountain[] = [] // Fontaines de vie générées
   groundDecorations: GroundDecoration[] = [] // Décorations de sol
+  wallDecorations: WallDecoration[] = [] // Décorations de murs
 
   constructor(scene: Scene) {
     this.scene = scene
@@ -23,11 +25,12 @@ export class MapGenerator {
   generateMap() {
     this.generateDungeon()
     // this.createGround() // Sol de base désactivé - on garde juste les décorations
-    this.createGrid()
+    this.createGrid() // Grid ON / OFF
     this.createDungeonWalls()
     this.generateChests() // Générer les coffres après la création du donjon
     this.generateFountains() // Générer les fontaines de vie
     this.generateGroundDecorations() // Ajouter des décorations au sol
+    this.generateWallDecorations() // Ajouter des textures aux murs
   }
 
   private generateDungeon() {
@@ -233,6 +236,44 @@ export class MapGenerator {
     }
     
     console.log(`🌿 ${numDecorations} décorations de sol générées`)
+  }
+
+  private generateWallDecorations() {
+    // Parcourir toutes les cases du donjon
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        // Si c'est un mur
+        if (this.dungeonMap[y][x] === 1) {
+          // Vérifier chaque direction pour voir s'il y a un espace walkable adjacent
+          
+          // Nord (y-1) - si walkable au nord, afficher face sud du mur
+          if (y > 0 && this.dungeonMap[y - 1][x] === 0) {
+            const wall = new WallDecoration(this.scene, x, y, WallDirection.NORTH)
+            this.wallDecorations.push(wall)
+          }
+          
+          // Sud (y+1) - si walkable au sud, afficher face nord du mur
+          if (y < GRID_SIZE - 1 && this.dungeonMap[y + 1][x] === 0) {
+            const wall = new WallDecoration(this.scene, x, y, WallDirection.SOUTH)
+            this.wallDecorations.push(wall)
+          }
+          
+          // Est (x+1) - si walkable à l'est, afficher face ouest du mur
+          if (x < GRID_SIZE - 1 && this.dungeonMap[y][x + 1] === 0) {
+            const wall = new WallDecoration(this.scene, x, y, WallDirection.EAST)
+            this.wallDecorations.push(wall)
+          }
+          
+          // Ouest (x-1) - si walkable à l'ouest, afficher face est du mur
+          if (x > 0 && this.dungeonMap[y][x - 1] === 0) {
+            const wall = new WallDecoration(this.scene, x, y, WallDirection.WEST)
+            this.wallDecorations.push(wall)
+          }
+        }
+      }
+    }
+    
+    console.log(`🧱 ${this.wallDecorations.length} décorations de mur générées`)
   }
 
   private createGrid() {

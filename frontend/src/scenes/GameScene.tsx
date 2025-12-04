@@ -5,6 +5,7 @@ import { Player } from '../entities/Player'
 import { Enemy } from '../entities/Enemy'
 import { MapGenerator } from '../world/MapGenerator'
 import PerkChoice from '../components/PerkChoice'
+import { WeaponHUD } from '../components/WeaponHUD'
 import type { Perk } from '../systems/PerkSystem'
 
 function GameScene() {
@@ -31,6 +32,9 @@ function GameScene() {
   
   // State pour le choix de perks
   const [availablePerks, setAvailablePerks] = useState<Perk[] | null>(null)
+
+  // State pour les armes équipées
+  const [equippedWeapons, setEquippedWeapons] = useState<Array<{ name: string; icon: string }>>([])
 
   // State pour le Game Over
   const [isGameOver, setIsGameOver] = useState(false)
@@ -87,13 +91,24 @@ function GameScene() {
     // Wave spawning system
     let waveNumber = 1
     let lastWaveTime = Date.now()
-    const WAVE_INTERVAL = 50000 // 10 secondes
-    const ENEMIES_PER_WAVE = 5
+    const WAVE_INTERVAL = 10000 // 10 secondes
+    const MAX_MONSTERS_ON_MAP = 200 // Limite de monstres sur la map
+
+    // Fonction pour calculer le nombre de monstres en fonction de la wave et du niveau
+    const calculateMonsterCount = (wave: number, playerLevel: number): number => {
+      const baseMonsters = 5
+      const waveScaling = Math.floor(wave * 1.5) // Croissance modérée par wave
+      const levelScaling = Math.floor(playerLevel * 0.8) // Croissance modérée par niveau
+      const exponentialBonus = Math.floor(Math.pow(wave / 10, 1.3)) // Bonus exponentiel léger
+      
+      return baseMonsters + waveScaling + levelScaling + exponentialBonus
+    }
 
     const spawnWave = () => {
-      console.log(`🌊 Wave ${waveNumber} spawning!`)
+      const monsterCount = calculateMonsterCount(waveNumber, player.getLevel())
+      console.log(`🌊 Wave ${waveNumber} spawning ${monsterCount} monsters! (Player Level: ${player.getLevel()})`)
       
-      for (let i = 0; i < ENEMIES_PER_WAVE; i++) {
+      for (let i = 0; i < monsterCount; i++) {
         // Spawn à une position aléatoire walkable
         const spawnPos = mapGenerator.getRandomWalkablePosition()
         enemies.push(new Enemy(scene, spawnPos.x, spawnPos.y))
@@ -114,18 +129,29 @@ function GameScene() {
       // Check if it's time to spawn a new wave
       const currentTime = Date.now()
       if (currentTime - lastWaveTime >= WAVE_INTERVAL) {
-        spawnWave()
-        lastWaveTime = currentTime
+        // Vérifier qu'on ne dépasse pas la limite de monstres
+        if (enemies.length < MAX_MONSTERS_ON_MAP) {
+          spawnWave()
+          lastWaveTime = currentTime
+        } else {
+          console.log(`⚠️ Wave ${waveNumber} retardée: trop de monstres sur la map (${enemies.length}/${MAX_MONSTERS_ON_MAP})`)
+          // On remet le timer pour réessayer dans 2 secondes
+          lastWaveTime = currentTime - WAVE_INTERVAL + 2000
+        }
       }
 
-      // Update player (with wall collision)
+      // Calculate deltaTime for smooth updates
+      const deltaTime = scene.getEngine().getDeltaTime()
+
+      // Update player (movement avec collision de murs)
       player.move(inputState, mapGenerator)
+      
+      // Update player (armes, animations, cooldowns)
+      // Passer les ennemis pour les armes qui en ont besoin (comme OrbWeapon)
+      player.update(deltaTime, enemies)
 
-      // Update cooldown bar
-      player.updateCooldownBar()
-
-      // Player auto-attack
-      const hitEnemies = player.autoAttack(enemies, scene)
+      // Player auto-attack avec toutes les armes
+      const hitEnemies = player.autoAttack(enemies)
       
       // Deal damage to hit enemies
       hitEnemies.forEach(enemy => {
@@ -206,6 +232,7 @@ function GameScene() {
       setMaxLife(player.getMaxLife())
       setLife(player.getLife())
       setAttackSpeed(player.getAttackSpeed())
+      setEquippedWeapons(player.getEquippedWeapons())
 
       scene.render()
     })
@@ -241,6 +268,9 @@ function GameScene() {
           }}
         />
       )}
+      
+      {/* HUD des armes équipées */}
+      <WeaponHUD weapons={equippedWeapons} maxWeapons={3} />
       
       {/* HUD gauche (stats principales) */}
       <div style={{ 
