@@ -399,6 +399,10 @@ export class Player {
         this.attackSpeed += perk.value
         console.log(`⚡ Attack speed increased to ${this.attackSpeed.toFixed(1)}x`)
         break
+      case PerkType.MOVE_SPEED:
+        this.speed += perk.value
+        console.log(`🏃 Move speed increased to ${this.speed.toFixed(2)}`)
+        break
     }
     
     // Réinitialiser les perks en attente

@@ -25,6 +25,7 @@ function GameScene() {
   const [maxLife, setMaxLife] = useState(100)
   const [life, setLife] = useState(100)
   const [attackSpeed, setAttackSpeed] = useState(1.0)
+  const [playerSpeed, setPlayerSpeed] = useState<number>(0.08)
   
   // State pour le panneau technique
   const [techPanelOpen, setTechPanelOpen] = useState(false)
@@ -232,6 +233,7 @@ function GameScene() {
       setMaxLife(player.getMaxLife())
       setLife(player.getLife())
       setAttackSpeed(player.getAttackSpeed())
+  setPlayerSpeed(player.speed)
       setEquippedWeapons(player.getEquippedWeapons())
 
       scene.render()
@@ -361,6 +363,10 @@ function GameScene() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Attack speed:</span>
                   <span style={{ color: '#44ff88', fontWeight: 'bold' }}>{attackSpeed.toFixed(1)}x</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Move speed:</span>
+                  <span style={{ color: '#88ff44', fontWeight: 'bold' }}>{playerSpeed.toFixed(2)}</span>
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>

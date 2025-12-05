@@ -4,6 +4,7 @@ export enum PerkType {
   ATTACK_DAMAGE = 'ATTACK_DAMAGE',
   MAX_LIFE = 'MAX_LIFE',
   ATTACK_SPEED = 'ATTACK_SPEED',
+  MOVE_SPEED = 'MOVE_SPEED',
 }
 
 export interface Perk {
@@ -34,6 +35,12 @@ export const PERK_DEFINITIONS: Record<PerkType, Omit<Perk, 'value'>> = {
     description: '+10% speed',
     emoji: '⚡',
   },
+  [PerkType.MOVE_SPEED]: {
+    type: PerkType.MOVE_SPEED,
+    name: 'Move Speed',
+    description: '+0.01 speed',
+    emoji: '🏃',
+  },
 }
 
 // Valeurs des améliorations
@@ -41,6 +48,7 @@ export const PERK_VALUES: Record<PerkType, number> = {
   [PerkType.ATTACK_DAMAGE]: 2,    // +20% damage (sur base 10)
   [PerkType.MAX_LIFE]: 20,         // +20% life (sur base 100)
   [PerkType.ATTACK_SPEED]: 0.1,   // +10% attack speed
+  [PerkType.MOVE_SPEED]: 0.01,    // +0.01 move speed (sur base 0.08)
 }
 
 // Génère 3 perks aléatoires (peut contenir des doublons pour simplicité)
