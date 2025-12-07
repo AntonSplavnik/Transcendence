@@ -1,0 +1,33 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "A real-time multiplayer web-based pong-game",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keelbismark/Transcendence.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/keelbismark/Transcendence/issues"
+  },
+  "homepage": "https://github.com/keelbismark/Transcendence#readme",
+  "dependencies": {
+    "cbor": "^10.0.11",
+    "pako": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/pako": "^2.0.4",
+    "typescript": "^5.9.3"
+  }
+}
