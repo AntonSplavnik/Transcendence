@@ -7,12 +7,17 @@ mod auth;
 
 pub fn root() -> Router {
     let router = Router::new()
-        .hoop(Logger::new())
-        .get(StaticDir::new("www").defaults("index.html"))
         .push(
             Router::with_path("api")
+                .hoop(Logger::new())
                 .push(Router::with_path("auth").push(auth::router()))
                 .push(Router::with_path("wt").goal(connect_stream)),
+        )
+        .push(
+            Router::with_path("{*path}").get(
+                StaticDir::new(&crate::config::get().serve_dir)
+                    .defaults("index.html"),
+            ),
         );
     let doc = OpenApi::new("Transcendence API", "0.0.1")
         .add_security_scheme(

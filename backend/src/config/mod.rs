@@ -51,6 +51,8 @@ pub struct ServerConfig {
     pub database_url: String,
     pub log: LogConfig,
     pub tls: Option<TlsConfig>,
+    #[serde(default = "default_serve_dir")]
+    pub serve_dir: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -78,4 +80,8 @@ fn default_listen_http_port() -> u16 {
 
 fn default_listen_https_port() -> u16 {
     8443
+}
+
+fn default_serve_dir() -> String {
+    "/www".into()
 }
