@@ -8,6 +8,9 @@ readme = "./README.md"
 [dependencies]
 # simple error handling
 anyhow = "1"
+base64 = "0.22"
+blake3 = "1.8"
+diesel-autoincrement-new-struct = "0.1"
 # config library
 figment = { version = "0.10", features = ["env", "toml"] }
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
@@ -77,3 +80,4 @@ ciborium = "0.2.2"
 zstd = "0.13.3"
 h3-quinn = "0.0.10"
 dashmap = "6"
+woothee = "0.13.0"

@@ -9,6 +9,7 @@ use serde::Serialize;
 use tokio::signal;
 use tracing::info;
 
+mod auth;
 mod config;
 mod db;
 mod hoops;
@@ -17,6 +18,7 @@ mod routers;
 mod schema;
 mod stream;
 mod utils;
+mod validate;
 
 mod error;
 pub use error::ApiError;
@@ -31,8 +33,10 @@ pub type EmptyResult = Result<Json<Empty>, ApiError>;
 pub fn json_ok<T>(data: T) -> JsonResult<T> {
     Ok(Json(data))
 }
+
 #[derive(Serialize, ToSchema, Clone, Copy, Debug)]
 pub struct Empty {}
+
 pub fn empty_ok() -> JsonResult<Empty> {
     Ok(Json(Empty {}))
 }
@@ -40,7 +44,6 @@ pub fn empty_ok() -> JsonResult<Empty> {
 #[tokio::main]
 async fn main() -> ExitCode {
     let _ = dotenvy::dotenv();
-    utils::init();
     crate::config::init();
     let config = crate::config::get();
     let _guard = config.log.guard();

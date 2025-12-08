@@ -1,9 +1,15 @@
 use salvo::oapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
 use salvo::prelude::*;
 
+use crate::hoops::auth::access_hoop;
 use crate::stream::connect_stream;
 
 mod auth;
+
+#[handler]
+pub async fn hello() -> &'static str {
+    "Hello, Transcendence!"
+}
 
 pub fn root() -> Router {
     let router = Router::new()
@@ -12,7 +18,12 @@ pub fn root() -> Router {
         .push(
             Router::with_path("api")
                 .push(Router::with_path("auth").push(auth::router()))
-                .push(Router::with_path("wt").goal(connect_stream)),
+                .push(
+                    Router::with_path("wt")
+                        .hoop(access_hoop)
+                        .goal(connect_stream),
+                )
+                .push(Router::with_path("hello").hoop(access_hoop).get(hello)),
         );
     let doc = OpenApi::new("Transcendence API", "0.0.1")
         .add_security_scheme(
@@ -27,6 +38,7 @@ pub fn root() -> Router {
                 ),
             )),
         )
+        .add_security_scheme("jwt", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::with_description("access_token", "TODO"))))
         .merge_router(&router);
     router
         .unshift(doc.into_router("/api-doc/openapi.json"))

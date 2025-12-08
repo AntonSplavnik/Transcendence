@@ -11,16 +11,15 @@ pub enum ApiError {
     DatabaseSQL(#[from] diesel::result::Error),
     DatabaseConnection(#[from] diesel::ConnectionError),
     DatabaseConnectionPool(#[from] diesel::r2d2::PoolError),
+    Jwt(#[from] jsonwebtoken::errors::Error),
+    #[error("Session token is invalid")]
+    InvalidSession,
+    #[error("Access token is invalid")]
+    InvalidAccess,
 }
 
-#[async_trait]
-impl Writer for ApiError {
-    async fn write(
-        self,
-        _req: &mut Request,
-        _depot: &mut Depot,
-        res: &mut Response,
-    ) {
+impl Scribe for ApiError {
+    fn render(self, res: &mut Response) {
         let status_error = match self {
             // Validation errors -> 400 Bad Request with field details
             Self::Validation(errs) => {
@@ -103,6 +102,17 @@ impl Writer for ApiError {
             Self::DatabaseConnectionPool(err) => {
                 tracing::error!(error = ?err, "Database connection pool error");
                 StatusError::internal_server_error()
+            }
+            Self::Jwt(err) => {
+                // TODO
+                tracing::error!(error = ?err, "JWT error");
+                StatusError::internal_server_error()
+            }
+            Self::InvalidSession => {
+                StatusError::unauthorized().brief("Session token is invalid")
+            }
+            Self::InvalidAccess => {
+                StatusError::unauthorized().brief("Access token is invalid")
             }
         };
 

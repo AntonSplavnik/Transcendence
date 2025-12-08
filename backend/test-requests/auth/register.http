@@ -5,8 +5,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-	"email": "user@example.com",
-	"nickname": "new_User",
+	"email": "usernew@example.com",
+	"nickname": "new_User212",
 	"password": "securePass"
 }
 

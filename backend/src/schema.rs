@@ -4,8 +4,7 @@ diesel::table! {
     sessions (id) {
         id -> Integer,
         user_id -> Integer,
-        token_hash -> Text,
-        previous_token_hash -> Nullable<Text>,
+        token_hash -> Binary,
         device_name -> Nullable<Text>,
         ip_address -> Nullable<Text>,
         created_at -> Timestamp,

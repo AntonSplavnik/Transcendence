@@ -1,0 +1,8 @@
+
+POST https://localhost:8443/api/auth/logout
+Content-Type: application/json
+Accept: application/json
+Cookie: session_token=cpuE3y4DWEoVIpHDOHaLf_k3CiZQWL5cso-wAsPIxnY; HttpOnly; SameSite=Lax; Secure; Path=/api/auth/; Max-Age=604800,access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOjEsInNpZCI6MSwianRpIjoiTXk5V3A5Qzlja2FnOVhzQXB4UVdfQSIsImV4cCI6MTc2NTE2MDkwNCwiaWF0IjoxNzY1MTYwMDA0fQ.7TFkayOyOYIP5X0qh_Dmd4qbEGxrBQlgSBZvXi5amH0; HttpOnly; SameSite=Lax; Secure; Path=/api/; Max-Age=900
+
+{
+}
