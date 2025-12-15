@@ -472,8 +472,20 @@ impl StreamManager {
 
         let mut sender =
             FramedWrite::new(send, CompressedCborEncoder::<_, BP>::new());
-        sender.send(r#type).await.unwrap(); // Send stream type as first message
-        sender.flush().await.unwrap();
+        sender.send(r#type).await.map_err(|e| {
+            self.unregister(user_id, None);
+            StreamManagerError::ConnectionClosed {
+                user_id,
+                reason: format!("failed to send stream type: {e}"),
+            }
+        })?;
+        sender.flush().await.map_err(|e| {
+            self.unregister(user_id, None);
+            StreamManagerError::ConnectionClosed {
+                user_id,
+                reason: format!("failed to flush stream type: {e}"),
+            }
+        })?;
         let sender = sender.map_encoder(|_| CompressedCborEncoder::new());
         let receiver = FramedRead::new(recv, CompressedCborDecoder::new());
 
