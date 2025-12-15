@@ -2,6 +2,9 @@ CREATE TABLE users (
 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	email TEXT UNIQUE NOT NULL COLLATE NOCASE,
 	nickname TEXT UNIQUE NOT NULL COLLATE NOCASE,
+	totp_enabled BOOLEAN NOT NULL,
+	totp_secret_enc TEXT,
+	totp_confirmed_at DATETIME,
 	password_hash TEXT NOT NULL,
 	created_at DATETIME NOT NULL
 );

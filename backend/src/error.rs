@@ -3,6 +3,8 @@ use salvo::oapi::{self, EndpointOutRegister, ToSchema};
 use salvo::prelude::*;
 use thiserror::Error;
 
+use crate::auth::{AuthError, TwoFactorError};
+
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum ApiError {
@@ -11,11 +13,10 @@ pub enum ApiError {
     DatabaseSQL(#[from] diesel::result::Error),
     DatabaseConnection(#[from] diesel::ConnectionError),
     DatabaseConnectionPool(#[from] diesel::r2d2::PoolError),
+    Stream(#[from] h3::error::StreamError),
     Jwt(#[from] jsonwebtoken::errors::Error),
-    #[error("Session token is invalid")]
-    InvalidSession,
-    #[error("Access token is invalid")]
-    InvalidAccess,
+    Auth(#[from] AuthError),
+    TwoFa(#[from] TwoFactorError),
 }
 
 impl Scribe for ApiError {
@@ -31,7 +32,8 @@ impl Scribe for ApiError {
                 match err {
                     // Wrong password -> 401 Unauthorized
                     Error::Password => {
-                        StatusError::unauthorized().brief("Invalid credentials")
+                        return ApiError::Auth(AuthError::InvalidCredentials)
+                            .render(res);
                     }
                     // Other hashing errors are internal
                     err => {
@@ -103,17 +105,28 @@ impl Scribe for ApiError {
                 tracing::error!(error = ?err, "Database connection pool error");
                 StatusError::internal_server_error()
             }
+            Self::Stream(err) => {
+                tracing::error!(error = ?err, "H3 stream error");
+                StatusError::internal_server_error()
+            }
             Self::Jwt(err) => {
-                // TODO
                 tracing::error!(error = ?err, "JWT error");
                 StatusError::internal_server_error()
             }
-            Self::InvalidSession => {
-                StatusError::unauthorized().brief("Session token is invalid")
+            Self::Auth(err) => {
+                let variant: &'static str = err.into();
+                StatusError::unauthorized().brief(variant)
             }
-            Self::InvalidAccess => {
-                StatusError::unauthorized().brief("Access token is invalid")
-            }
+            Self::TwoFa(err) => match err {
+                TwoFactorError::Internal(msg) => {
+                    tracing::error!(error = %msg, "2FA internal error");
+                    StatusError::internal_server_error()
+                }
+                variant => {
+                    let variant: &'static str = variant.into();
+                    StatusError::unauthorized().brief(variant)
+                }
+            },
         };
 
         res.render(status_error);
@@ -127,9 +140,9 @@ impl EndpointOutRegister for ApiError {
     ) {
         let responses = [
             (StatusCode::BAD_REQUEST, "Bad request or validation error"),
-            (StatusCode::UNAUTHORIZED, "Invalid credentials"),
             (StatusCode::NOT_FOUND, "Resource not found"),
             (StatusCode::CONFLICT, "Resource already exists"),
+            (StatusCode::UNAUTHORIZED, "Unauthorized"),
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         ];
 

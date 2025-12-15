@@ -34,7 +34,8 @@ async fn main() -> ExitCode {
     tracing::info!("log level: {}", &config.log.filter_level);
 
     let mut router = routers::root()
-        .hoop(ForceHttps::new().https_port(config.listen_https_port));
+        .hoop(ForceHttps::new().https_port(config.listen_https_port))
+        .hoop(crate::auth::device_id_inserter_hoop);
 
     if let Some(tls) = &config.tls {
         let acceptor = setup_acceptor_socket(&config, tls).await;

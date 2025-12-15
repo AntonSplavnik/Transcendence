@@ -1,51 +1,70 @@
+use salvo::http::Method;
 use salvo::oapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
-use salvo::prelude::*;
+use salvo::routing::MethodFilter;
 
-use crate::hoops::auth::access_hoop;
-use crate::stream::connect_stream;
+use crate::prelude::*;
 
-mod auth;
+pub mod users;
 
-#[handler]
-pub async fn hello() -> &'static str {
-    "Hello, Transcendence!"
-}
+const OPENAPI_JSON: &str = "/api-doc/openapi.json";
 
 pub fn root() -> Router {
-    let router = Router::new()
-        .hoop(Logger::new())
-        .get(StaticDir::new("www").defaults("index.html"))
-        .push(
-            Router::with_path("api")
-                .push(Router::with_path("auth").push(auth::router()))
-                .push(
-                    Router::with_path("wt")
-                        .hoop(access_hoop)
-                        .goal(connect_stream),
-                )
-                .push(Router::with_path("hello").hoop(access_hoop).get(hello)),
-        );
-    let doc = OpenApi::new("Transcendence API", "0.0.1")
+    let api_routes = Router::with_path("api")
+        .hoop(crate::utils::logger::Logger)
+        .hoop(Timeout::new(std::time::Duration::from_secs(30)))
+        .append(&mut vec![
+            crate::auth::router("auth"),
+            crate::auth::user_router("user"),
+            users::router("users"),
+        ]);
+    // TODO test whether allowing only CONNECT is sufficient
+    let wt_route = Router::with_path("api/wt")
+        .hoop(crate::utils::logger::Logger)
+        .requires_user_login()
+        .user_rate_limit(&RateLimit::per_minute(10))
+        .filter(MethodFilter::new(Method::CONNECT))
+        .goal(crate::stream::connect_stream);
+    let api_routes = Router::new().push(api_routes).push(wt_route);
+    let doc = openapi_doc(&api_routes);
+    let router = Router::new().push(api_routes);
+    router
+        .unshift(doc.into_router(OPENAPI_JSON))
+        .unshift(Scalar::new(OPENAPI_JSON).into_router("scalar"))
+        .unshift(SwaggerUi::new(OPENAPI_JSON).into_router("swagger-ui"))
+        .unshift(RapiDoc::new(OPENAPI_JSON).into_router("rapidoc"))
+        .unshift(ReDoc::new(OPENAPI_JSON).into_router("redoc"))
+}
+
+fn openapi_doc(to_document: &Router) -> OpenApi {
+    OpenApi::new("Transcendence API", "0.0.1")
         .add_security_scheme(
             "session",
             SecurityScheme::ApiKey(ApiKey::Cookie(
                 ApiKeyValue::with_description(
-                    "session_token",
+                    crate::auth::SESSION_COOKIE_NAME,
                     "HttpOnly cookie containing a 32-byte base64url-encoded refresh token. \
-                     Issued by the /auth/login and /auth/refresh endpoint and rotated on each refresh. \
-                     Used for authentication on /api/auth endpoints (logout, refresh, change-password). \
-                     Has a 7-day rolling expiry with 30-day absolute maximum lifetime.",
+                     Issued by /api/auth/register and /api/auth/login and rotated on each refresh/reauth. \
+                     Used only for /api/auth/session-management/* endpoints. \
+                     Has a 7-day rolling session window and may require credential reauthentication \
+                     based on server-side rules (e.g. after 30 days since last credential auth). \
+                     Sessions are not deleted automatically.",
                 ),
             )),
         )
-        .add_security_scheme("jwt", SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::with_description("access_token", "TODO"))))
-        .merge_router(&router);
-    router
-        .unshift(doc.into_router("/api-doc/openapi.json"))
-        .unshift(Scalar::new("/api-doc/openapi.json").into_router("scalar"))
-        .unshift(
-            SwaggerUi::new("/api-doc/openapi.json").into_router("swagger-ui"),
+        .add_security_scheme("reauth_session", SecurityScheme::ApiKey(ApiKey::Cookie(
+                ApiKeyValue::with_description(
+                    crate::auth::SESSION_COOKIE_NAME,
+                    "Same as 'session' but only valid for reauth endpoints which \
+                     do not enforce the requirement for the session to be non-reauth (used by /api/auth/session-management/reauth).",
+                ),
+            )),)
+        .add_security_scheme("jwt", SecurityScheme::ApiKey(ApiKey::Cookie(
+            ApiKeyValue::with_description(
+                crate::auth::JWT_COOKIE_NAME,
+                "JWT access token cookie used for authentication on most \
+                /api/ endpoints. Explicitly issued by /api/auth/register, /api/auth/login and /api/auth/session-management/* endpoints. \
+                Short-lived (a few minutes) and rotated on each refresh."),
+            )),
         )
-        .unshift(RapiDoc::new("/api-doc/openapi.json").into_router("rapidoc"))
-        .unshift(ReDoc::new("/api-doc/openapi.json").into_router("redoc"))
+        .merge_router(&to_document)
 }

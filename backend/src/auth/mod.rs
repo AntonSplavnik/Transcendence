@@ -1,9 +1,41 @@
-use std::sync::LazyLock;
+use std::{sync::LazyLock, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
+mod hoops;
+mod router;
 pub mod session_token;
+mod two_factor;
+mod user;
+mod util;
 
+pub use hoops::{
+    AuthError, DepotAuthExt, RouterAuthExt, device_id_inserter_hoop,
+};
+pub use router::router;
+pub use two_factor::TwoFactorError;
+pub use user::router as user_router;
+
+pub const JWT_COOKIE_NAME: &str = "access_token";
+pub const SESSION_COOKIE_NAME: &str = "session_token";
+const SESSION_EXPIRY: Duration = Duration::from_hours(7 * 24);
+const SESSION_FORCED_EXPIRY: Duration = Duration::from_hours(30 * 24);
+const ACCESS_EXPIRY: Duration = Duration::from_mins(15);
+
+/// Maximum number of sessions to keep per user.
+///
+/// When a new session is created, older sessions are pruned down to this limit.
+const MAX_SESSIONS_PER_USER: i64 = 10;
+
+/// How long the browser should keep the refresh-token cookie.
+///
+/// Server-side rules (rolling expiry / forced reauth) still apply; this just
+/// allows reactivation of long-lived sessions at a later time.
+const SESSION_COOKIE_MAX_AGE: Duration =
+    Duration::from_secs(60 * 60 * 24 * 365 * 10);
+
+/// Dont care about old JWT tokens when server restarts,
+/// clients can just refresh their access tokens.
 static JWT_SECRET: LazyLock<[u8; 32]> = LazyLock::new(rand::random);
 
 static JWT_ENCODING_KEY: LazyLock<jsonwebtoken::EncodingKey> =
@@ -19,20 +51,20 @@ static JWT_DECODING_KEY: LazyLock<jsonwebtoken::DecodingKey> =
 static JWT_VALIDATION: LazyLock<jsonwebtoken::Validation> =
     LazyLock::new(|| jsonwebtoken::Validation::default());
 
-pub fn jwt_encoding_key() -> &'static jsonwebtoken::EncodingKey {
+fn jwt_encoding_key() -> &'static jsonwebtoken::EncodingKey {
     &JWT_ENCODING_KEY
 }
 
-pub fn jwt_decoding_key() -> &'static jsonwebtoken::DecodingKey {
+fn jwt_decoding_key() -> &'static jsonwebtoken::DecodingKey {
     &JWT_DECODING_KEY
 }
 
-pub fn jwt_validation() -> &'static jsonwebtoken::Validation {
+fn jwt_validation() -> &'static jsonwebtoken::Validation {
     &JWT_VALIDATION
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JwtClaims {
+struct JwtClaims {
     pub sub: i32,
     pub sid: i32,
     pub jti: session_token::SessionTokenHashTruncated,
