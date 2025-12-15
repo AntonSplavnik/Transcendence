@@ -1,0 +1,107 @@
+[package]
+name = "transcendence-backend"
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.89"
+readme = "./README.md"
+
+[dependencies]
+# simple error handling
+anyhow = "1"
+base64 = "0.22"
+# secure hash
+blake3 = "1.8"
+diesel-autoincrement-new-struct = "0.1"
+# config library
+figment = { version = "0.10", features = ["env", "toml"] }
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+# embed files into the compiled binary
+rust-embed = "8"
+# web api backend framework
+salvo = { version = "0.85", features = [
+	"anyhow",
+	"acme",
+	"force-https",
+	"quinn",
+	"cookie",
+	"cors",
+	"oapi",
+	"serve-static",
+	"rustls",
+	"test",
+	"timeout",
+] }
+# serialization and deserialization library
+serde = "1"
+# easier error types
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+# async-engine and multi-threading
+tokio = { version = "1", features = ["full"] }
+# logging
+tracing = "0.1"
+# enforce checks/rules on struct fields
+validator = { version = "0.20", features = ["derive"] }
+# id generation
+ulid = "1"
+# password hashing
+argon2 = { version = "0.5", features = ["std"] }
+cookie = "0.18"
+# environment variables
+dotenvy = "0.15"
+# logging
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = [
+	"std",
+	"fmt",
+	"env-filter",
+	"tracing-log",
+	"time",
+	"local-time",
+	"json",
+] }
+# database orm
+diesel_migrations = "2"
+scheduled-thread-pool = "0.2"
+url = "2"
+# database orm
+diesel = { version = "2", features = [
+	"sqlite",
+	"returning_clauses_for_sqlite_3_35",
+	"chrono",
+	"r2d2",
+] }
+# rand gen
+rand = "0.9"
+# for the custom compressedCbor codec
+tokio-util = { version = "0.7.17", features = ["codec"] }
+futures = "0.3.31"
+bytes = "1.11.0"
+ciborium = "0.2.2"
+zstd = "0.13.3"
+h3-quinn = "0.0.10"
+# fast concurrent hashmap
+dashmap = "6"
+# user-agent parsing
+woothee = "0.13.0"
+# fast (but DOS-resistant) hashing
+ahash = "0.8.12"
+# in-memory caching
+quick_cache = "0.6.18"
+# efficient rate-limiting
+pingora-limits = "0.6.0"
+# dependency for h3-quinn (just need an error type from it)
+h3 = "0.0.8"
+# manual json conversions
+serde_json = "1.0.145"
+# enum utils
+strum = { version = "0.27.2", features = ["derive"] }
+# 2FA (TOTP + recovery codes)
+totp-rs = { version = "5.7.0", default-features = false, features = [
+	"qr",
+	"otpauth",
+	"gen_secret",
+] }
+# aead cipher
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+hex = "0.4"

@@ -1,0 +1,220 @@
+use std::{borrow::Cow, sync::LazyLock};
+
+use argon2::password_hash::{self, SaltString, rand_core::OsRng};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use cookie::Cookie;
+
+use crate::auth::session_token::{SessionToken, SessionTokenHashTruncated};
+use crate::auth::{JwtClaims, jwt_encoding_key};
+use crate::models::{Session, User};
+use crate::prelude::*;
+
+use super::ACCESS_EXPIRY;
+use super::two_factor;
+
+pub fn session_requires_reauth_at(
+    session: &Session,
+) -> (chrono::NaiveDateTime, chrono::NaiveDateTime) {
+    (
+        session.refreshed_at + super::SESSION_EXPIRY,
+        session.last_authenticated_at + super::SESSION_FORCED_EXPIRY,
+    )
+}
+
+pub fn prune_excess_sessions(
+    conn: &mut DbConn,
+    target_user_id: i32,
+    keep_session_id: Option<i32>,
+) -> AppResult<usize> {
+    use crate::schema::sessions::dsl::*;
+
+    // Keep newest sessions by last_used_at (and created_at as a tie-breaker).
+    let mut session_ids: Vec<i32> = sessions
+        .filter(user_id.eq(target_user_id))
+        .order((last_used_at.desc(), created_at.desc()))
+        .select(id)
+        .load(conn)?;
+
+    let max_to_keep = super::MAX_SESSIONS_PER_USER as usize;
+
+    // Ensure we never delete the explicitly kept session, and adjust how many
+    // other sessions are allowed to remain.
+    let allowed = if let Some(keep_id) = keep_session_id {
+        session_ids.retain(|sid| *sid != keep_id);
+        max_to_keep.saturating_sub(1)
+    } else {
+        max_to_keep
+    };
+
+    if session_ids.len() <= allowed {
+        return Ok(0);
+    }
+
+    let to_delete: Vec<i32> = session_ids.into_iter().skip(allowed).collect();
+    if to_delete.is_empty() {
+        return Ok(0);
+    }
+
+    Ok(diesel::delete(sessions.filter(id.eq_any(to_delete))).execute(conn)?)
+}
+
+/*
+{
+  "sub": 123,        // user_id
+  "sid": 456,        // session_id
+  "jti": "abc123...", // JWT ID: truncated refresh token hash (16 bytes, base64url)
+  "exp": 1732723200,
+  "iat": 1732722300
+}
+*/
+
+pub fn device_id_cookie(depot: &Depot) -> Cookie<'static> {
+    cookie::Cookie::build(("device_id", depot.device_id().to_owned()))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(cookie::SameSite::Lax)
+        .max_age(cookie::time::Duration::seconds(
+            crate::auth::SESSION_COOKIE_MAX_AGE.as_secs() as i64,
+        ))
+        .build()
+}
+
+pub fn session_cookie(token: SessionToken) -> Cookie<'static> {
+    Cookie::build((super::SESSION_COOKIE_NAME, token.encoded()))
+        .path("/api/auth/session-management/")
+        .http_only(true)
+        .secure(true)
+        .same_site(cookie::SameSite::Lax)
+        .max_age(cookie::time::Duration::seconds(
+            super::SESSION_COOKIE_MAX_AGE.as_secs() as i64,
+        ))
+        .build()
+}
+
+pub fn jwt_cookie(token: impl Into<Cow<'static, str>>) -> Cookie<'static> {
+    Cookie::build((super::JWT_COOKIE_NAME, token))
+        .path("/api/")
+        .http_only(true)
+        .secure(true)
+        .same_site(cookie::SameSite::Lax)
+        .max_age(cookie::time::Duration::seconds(
+            ACCESS_EXPIRY.as_secs() as i64
+        ))
+        .build()
+}
+
+pub fn jwt_create(
+    session: &Session,
+    jti: SessionTokenHashTruncated,
+) -> AppResult<String> {
+    let now = chrono::Utc::now();
+    let claim = JwtClaims {
+        sub: session.user_id,
+        sid: session.id,
+        jti,
+        exp: (now + ACCESS_EXPIRY).timestamp() as usize,
+        iat: now.timestamp() as usize,
+    };
+    Ok(jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claim,
+        jwt_encoding_key(),
+    )?)
+}
+
+pub fn check_password(
+    user_id: i32,
+    password: &str,
+    conn: &mut DbConn,
+) -> AppResult<User> {
+    use crate::schema::users::dsl::*;
+    // constant time lookup and verification to prevent timing attacks
+    let user = users
+        .filter(id.eq(user_id))
+        .first::<crate::models::User>(conn);
+    verify_password(
+        password,
+        user.as_ref().ok().map(|user| user.password_hash.as_str()),
+    )?;
+    let user =
+        user.expect("User must exist after successful password verification");
+    Ok(user)
+}
+
+pub fn check_password_and_mfa_if_enabled(
+    user_id_value: i32,
+    password: &str,
+    mfa_code: Option<&str>,
+    conn: &mut DbConn,
+) -> AppResult<User> {
+    let user = check_password(user_id_value, password, conn)?;
+    two_factor::require_mfa_if_enabled(conn, &user, mfa_code)?;
+    Ok(user)
+}
+
+pub fn get_user_by_credentials(
+    email: &str,
+    password: &str,
+    conn: &mut DbConn,
+) -> AppResult<User> {
+    use crate::schema::users::dsl as users_dsl;
+    // constant time lookup and verification to prevent timing attacks
+    // TODO (not planned yet) /register is not protected against timing attacks, because we dont have email-sending infrastructure
+    let user = users_dsl::users
+        .filter(users_dsl::email.eq(email))
+        .first::<crate::models::User>(conn);
+    verify_password(
+        password,
+        user.as_ref().ok().map(|user| user.password_hash.as_str()),
+    )?;
+    let user =
+        user.expect("User must exist after successful password verification");
+    Ok(user)
+}
+
+pub fn get_device_and_ip(req: &Request) -> (Option<String>, Option<String>) {
+    let device = req
+        .header::<&str>("User-Agent")
+        .map(|ua| {
+            woothee::parser::Parser::new().parse(ua).map(|info| {
+                format!("{} on {} ({})", info.name, info.os, info.category)
+            })
+        })
+        .flatten();
+    let ip = req
+        .remote_addr()
+        .to_owned()
+        .into_std()
+        .map(|addr| addr.ip().to_string());
+    (device, ip)
+}
+
+static RANDOM_PASSWORD_HASH: LazyLock<String> = LazyLock::new(|| {
+    hash_password("dummy password")
+        .expect("Failed to generate dummy password hash")
+        .to_string()
+});
+
+static ARGON2: LazyLock<Argon2<'static>> = LazyLock::new(|| Argon2::default());
+
+/// Constant-time password verification
+pub fn verify_password(
+    password: &str,
+    password_hash: Option<&str>,
+) -> Result<(), password_hash::Error> {
+    let hash =
+        PasswordHash::new(&password_hash.unwrap_or(&RANDOM_PASSWORD_HASH))?;
+    let res = ARGON2.verify_password(password.as_bytes(), &hash);
+    match password_hash {
+        Some(_) => res,
+        None => Err(password_hash::Error::Password), // when no hash (user does not exist), always return Error::Password
+    }
+}
+
+pub fn hash_password(password: &str) -> Result<String, password_hash::Error> {
+    let salt = SaltString::generate(&mut OsRng);
+    ARGON2
+        .hash_password(password.as_bytes(), &salt)
+        .map(|ph| ph.to_string())
+}

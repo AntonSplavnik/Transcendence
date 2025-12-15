@@ -1,0 +1,6 @@
+[log]
+format = "compact"
+
+[tls]
+cert = "./certs/cert.pem"
+key = "./certs/key.pem"
