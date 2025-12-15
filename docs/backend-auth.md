@@ -453,7 +453,7 @@ There are two distinct “revocation-ish” behaviors:
 
 2. **Delete** (SQL DELETE from sessions table)
    - Removes the session record entirely.
-   - The session token and jwt will no longer have a matchin DB row.
+   - The session token and jwt will no longer have a matching DB row.
 
 `/api/user/logout` performs **deauth + cookie deletion**, not deletion of the DB row.
 

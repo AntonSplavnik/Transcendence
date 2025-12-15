@@ -28,7 +28,7 @@ pub enum TwoFactorError {
     #[error("Two-factor authentication enrollment has not been started")]
     NotStarted,
     #[error(
-        "Another request to make changes to two-factor authentication occured \
+        "Another request to make changes to two-factor authentication occurred \
 		while this one was in progress, thus rendering this request invalid"
     )]
     ConcurrentRequestRaced,
