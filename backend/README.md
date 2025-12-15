@@ -28,3 +28,7 @@ You chose diesel, please check the documentation here <https://diesel.rs/guides/
 ## About Salvo
 
 You can view the salvo documentation and more examples at https://salvo.rs/ 📖.
+
+## Authentication
+
+- ../docs/backend-auth.md
