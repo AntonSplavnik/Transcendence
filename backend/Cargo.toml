@@ -9,6 +9,7 @@ readme = "./README.md"
 # simple error handling
 anyhow = "1"
 base64 = "0.22"
+# secure hash
 blake3 = "1.8"
 diesel-autoincrement-new-struct = "0.1"
 # config library
@@ -24,18 +25,17 @@ salvo = { version = "0.85", features = [
 	"quinn",
 	"cookie",
 	"cors",
-	"jwt-auth",
 	"oapi",
 	"serve-static",
 	"rustls",
-	"logging",
 	"test",
+	"timeout",
 ] }
 # serialization and deserialization library
 serde = "1"
 # easier error types
 thiserror = "2"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 # async-engine and multi-threading
 tokio = { version = "1", features = ["full"] }
 # logging
@@ -73,11 +73,35 @@ diesel = { version = "2", features = [
 ] }
 # rand gen
 rand = "0.9"
+# for the custom compressedCbor codec
 tokio-util = { version = "0.7.17", features = ["codec"] }
 futures = "0.3.31"
 bytes = "1.11.0"
 ciborium = "0.2.2"
 zstd = "0.13.3"
 h3-quinn = "0.0.10"
+# fast concurrent hashmap
 dashmap = "6"
+# user-agent parsing
 woothee = "0.13.0"
+# fast (but DOS-resistant) hashing
+ahash = "0.8.12"
+# in-memory caching
+quick_cache = "0.6.18"
+# efficient rate-limiting
+pingora-limits = "0.6.0"
+# dependency for h3-quinn (just need an error type from it)
+h3 = "0.0.8"
+# manual json conversions
+serde_json = "1.0.145"
+# enum utils
+strum = { version = "0.27.2", features = ["derive"] }
+# 2FA (TOTP + recovery codes)
+totp-rs = { version = "5.7.0", default-features = false, features = [
+	"qr",
+	"otpauth",
+	"gen_secret",
+] }
+# aead cipher
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+hex = "0.4"

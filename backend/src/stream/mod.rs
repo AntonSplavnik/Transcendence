@@ -153,3 +153,13 @@ pub use futures::StreamExt;
 pub use stream_manager::{
     Receiver, Sender, StreamManager, StreamManagerError, connect_stream,
 };
+
+#[derive(Debug, serde::Serialize)]
+pub enum StreamType {
+    Chat,
+}
+
+// TODO need AUTH (while the connection is open: session could expire, get deleted, logged out, user deleted, etc.)
+// maybe enforce regular access verification by requiring the client to continuously
+// use a rest endpoint where the access for a user is verified.
+// And if that doesnt happen for a while, the stream is closed.

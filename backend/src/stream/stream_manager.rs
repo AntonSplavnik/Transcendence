@@ -152,17 +152,19 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use dashmap::DashMap;
-use salvo::prelude::*;
+use futures::SinkExt as _;
 use salvo::proto::quic::BidiStream;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::de::DeserializeOwned;
 use thiserror::Error;
 use tokio::io::AsyncReadExt;
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
+use super::StreamType;
 use super::compress_cbor_codec::{
     CodecBufferParams, CompressedCborDecoder, CompressedCborEncoder,
 };
+use crate::prelude::*;
 use crate::utils::adaptive_buffer::BufferParams;
 
 /// Timeout for stream operations.
@@ -248,7 +250,7 @@ struct ConnectionEntry {
 /// allowing external components to request new streams.
 pub struct StreamManager {
     /// Registry mapping user IDs to their connection entries.
-    connections: DashMap<i32, ConnectionEntry>,
+    connections: DashMap<i32, ConnectionEntry, ahash::RandomState>,
     /// Counter for generating unique connection IDs.
     connection_id_counter: AtomicU64,
 }
@@ -257,7 +259,7 @@ impl StreamManager {
     /// Create a new StreamManager.
     fn new() -> Self {
         Self {
-            connections: DashMap::new(),
+            connections: DashMap::default(),
             connection_id_counter: AtomicU64::new(0),
         }
     }
@@ -267,6 +269,11 @@ impl StreamManager {
         static INSTANCE: LazyLock<StreamManager> =
             LazyLock::new(StreamManager::new);
         &INSTANCE
+    }
+
+    /// Returns whether the given user is connected
+    pub fn is_connected(&self, user_id: i32) -> bool {
+        self.connections.contains_key(&user_id)
     }
 
     /// Register a user's WebTransport connection command channel.
@@ -421,6 +428,7 @@ impl StreamManager {
     pub async fn request_stream<S, R>(
         &self,
         user_id: i32,
+        r#type: StreamType,
     ) -> Result<(Sender<S>, Receiver<R>)>
     where
         S: Serialize,
@@ -428,6 +436,7 @@ impl StreamManager {
     {
         self.request_custom_stream::<S, R, CodecBufferParams, { 8 * 1024 * 1024 }>(
             user_id,
+            r#type,
         )
         .await
     }
@@ -452,6 +461,7 @@ impl StreamManager {
     pub async fn request_custom_stream<S, R, BP, const MAX_FRAME: usize>(
         &self,
         user_id: i32,
+        r#type: StreamType,
     ) -> Result<(Sender<S, BP>, Receiver<R, MAX_FRAME>)>
     where
         S: Serialize,
@@ -460,7 +470,11 @@ impl StreamManager {
     {
         let (send, recv) = self.request_unframed_stream(user_id).await?;
 
-        let sender = FramedWrite::new(send, CompressedCborEncoder::new());
+        let mut sender =
+            FramedWrite::new(send, CompressedCborEncoder::<_, BP>::new());
+        sender.send(r#type).await.unwrap(); // Send stream type as first message
+        sender.flush().await.unwrap();
+        let sender = sender.map_encoder(|_| CompressedCborEncoder::new());
         let receiver = FramedRead::new(recv, CompressedCborDecoder::new());
 
         Ok((sender, receiver))
@@ -491,23 +505,16 @@ impl StreamManager {
 /// 4. Server-side components can request streams via [`StreamManager::request_stream`]
 /// 5. Connection ends when client disconnects or heartbeat fails
 ///
-/// # Authentication
-///
-/// The user must be authenticated before connecting.
-///
 /// # Single Connection Policy
 ///
 /// Each user can have only one active WebTransport connection. Connecting from a new
 /// device or tab will automatically disconnect the previous connection.
-#[endpoint(
-    tags("WebTransport"),
-    security(("jwt" = []))
-)]
+#[endpoint]
 pub async fn connect_stream(
     req: &mut Request,
-) -> std::result::Result<(), salvo::Error> {
-    // TODO: Replace with actual authenticated user_id once auth middleware is implemented
-    let user_id: i32 = 0;
+    depot: &mut Depot,
+) -> AppResult<()> {
+    let user_id: i32 = depot.user_id();
 
     let session = req.web_transport_mut().await.unwrap();
     let session_id = session.session_id();

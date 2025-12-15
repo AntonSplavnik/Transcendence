@@ -108,6 +108,7 @@ pub struct AdaptiveBuffer<T, P: BufferParams = DefaultBufferParams> {
     _params: PhantomData<P>,
 }
 
+#[allow(unused)]
 impl<T, P: BufferParams> AdaptiveBuffer<T, P> {
     /// Creates a new buffer with `P::MIN_CAPACITY` initial capacity.
     #[inline]
