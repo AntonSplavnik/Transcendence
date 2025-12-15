@@ -5,41 +5,23 @@ use salvo::conn::Acceptor;
 use salvo::conn::rustls::{Keycert, RustlsConfig};
 use salvo::prelude::*;
 use salvo::server::ServerHandle;
-use serde::Serialize;
 use tokio::signal;
-use tracing::info;
 
 mod auth;
 mod config;
-mod db;
-mod hoops;
+pub mod db;
+mod error;
 mod models;
+mod prelude;
 mod routers;
 mod schema;
 mod stream;
 mod utils;
 mod validate;
 
-mod error;
 pub use error::ApiError;
 
 use crate::config::{ServerConfig, TlsConfig};
-
-pub type StatusResult = Result<StatusCode, ApiError>;
-pub type AppResult<T> = Result<T, ApiError>;
-pub type JsonResult<T> = Result<Json<T>, ApiError>;
-pub type EmptyResult = Result<Json<Empty>, ApiError>;
-
-pub fn json_ok<T>(data: T) -> JsonResult<T> {
-    Ok(Json(data))
-}
-
-#[derive(Serialize, ToSchema, Clone, Copy, Debug)]
-pub struct Empty {}
-
-pub fn empty_ok() -> JsonResult<Empty> {
-    Ok(Json(Empty {}))
-}
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -47,7 +29,7 @@ async fn main() -> ExitCode {
     crate::config::init();
     let config = crate::config::get();
     let _guard = config.log.guard();
-    crate::db::init();
+    crate::utils::limiter::periodic_rate_limit_report();
 
     tracing::info!("log level: {}", &config.log.filter_level);
 
@@ -116,9 +98,6 @@ async fn setup_acme_acceptor_socket(
     acceptor
 }
 
-// TODO only with a domain: Set up a TCP listener on port 443 for HTTPS with ACME and HTTP3
-//
-
 // generic helper to enable using different acceptor types
 async fn run_server<A>(acceptor: A, router: Router, config: &ServerConfig)
 where
@@ -162,34 +141,8 @@ async fn shutdown_signal(handle: ServerHandle) {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => info!("ctrl_c signal received"),
-        _ = terminate => info!("terminate signal received"),
+        _ = ctrl_c => tracing::info!("ctrl_c signal received"),
+        _ = terminate => tracing::info!("terminate signal received"),
     }
     handle.stop_graceful(std::time::Duration::from_secs(60));
-}
-
-#[cfg(test)]
-mod tests {
-    use salvo::prelude::*;
-    use salvo::test::{ResponseExt, TestClient};
-
-    use crate::config;
-
-    #[tokio::test]
-    async fn test_hello_world() {
-        config::init();
-
-        let service = Service::new(crate::routers::root());
-
-        let content = TestClient::get(format!(
-            "http://{}",
-            config::get().listen_addr.replace("0.0.0.0", "127.0.0.1")
-        ))
-        .send(&service)
-        .await
-        .take_string()
-        .await
-        .unwrap();
-        assert_eq!(content, "Hello World from salvo");
-    }
 }
