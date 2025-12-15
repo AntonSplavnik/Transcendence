@@ -2,8 +2,6 @@ use serde::Deserialize;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::fmt;
 
-use super::default_true;
-
 const FORMAT_PRETTY: &str = "pretty";
 const FORMAT_COMPACT: &str = "compact";
 const FORMAT_FULL: &str = "full";
@@ -27,11 +25,17 @@ pub struct LogConfig {
     #[serde(default = "default_true")]
     pub with_source_location: bool,
 }
+
 fn default_filter_level() -> String {
     "info".into()
 }
+
 fn default_format() -> String {
     FORMAT_FULL.into()
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for LogConfig {

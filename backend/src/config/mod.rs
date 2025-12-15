@@ -59,15 +59,6 @@ pub struct TlsConfig {
     pub key: String,
 }
 
-#[allow(dead_code)]
-pub fn default_false() -> bool {
-    false
-}
-#[allow(dead_code)]
-pub fn default_true() -> bool {
-    true
-}
-
 fn default_listen_addr() -> String {
     "127.0.0.1".into()
 }

@@ -1,13 +1,16 @@
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use diesel::SqliteConnection;
 use diesel::connection::SimpleConnection;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel_migrations::{
     EmbeddedMigrations, MigrationHarness, embed_migrations,
 };
 use tracing::info;
+
+use crate::prelude::*;
+
+pub type DbConn = PooledConnection<ConnectionManager<SqliteConnection>>;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -39,15 +42,9 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
     }
 }
 
-pub fn init() {
-    LazyLock::force(&DB);
-    migrate();
-}
-
 fn init_pool() -> Pool<ConnectionManager<SqliteConnection>> {
-    let config = crate::config::get();
-    let manager =
-        ConnectionManager::<SqliteConnection>::new(&config.database_url);
+    let database_url = database_url();
+    let manager = ConnectionManager::<SqliteConnection>::new(&database_url);
 
     let pool = Pool::builder()
         .max_size(10) // Maximum number of connections in the pool
@@ -57,11 +54,11 @@ fn init_pool() -> Pool<ConnectionManager<SqliteConnection>> {
         .build(manager)
         .expect("Failed to create database connection pool");
     info!("Database connection pool initialized with WAL mode");
+    migrate(&mut pool.get().expect("Failed to get connection for migration"));
     pool
 }
 
-fn migrate() {
-    let mut conn = get().expect("Failed to get connection for migration");
+fn migrate(conn: &mut DbConn) {
     info!(
         "Has pending migration: {}",
         conn.has_pending_migration(MIGRATIONS).unwrap()
@@ -70,9 +67,17 @@ fn migrate() {
         .expect("migrate db should worked");
 }
 
-pub fn get() -> Result<
-    PooledConnection<ConnectionManager<SqliteConnection>>,
-    diesel::r2d2::PoolError,
-> {
+pub fn get() -> Result<DbConn, diesel::r2d2::PoolError> {
     DB.get()
+}
+
+const TEST_DATABASE_URL: &str =
+    "file:transcendence_test?mode=memory&cache=shared";
+
+fn database_url() -> String {
+    if cfg!(test) {
+        TEST_DATABASE_URL.to_string()
+    } else {
+        crate::config::get().database_url.clone()
+    }
 }
