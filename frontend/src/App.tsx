@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import GameScene from './scenes/GameScene'
+import GameScene from './game/scenes/GameScene'
 
 function App() {
   return (
