@@ -72,7 +72,12 @@ function GameScene() {
 
     // Configurer le callback pour le choix de perks
     player.onPerkChoiceReady = (perks: Perk[]) => {
-      setAvailablePerks(perks)
+      // Si le tableau est vide, fermer l'UI
+      if (perks.length === 0) {
+        setAvailablePerks(null)
+      } else {
+        setAvailablePerks(perks)
+      }
     }
 
     // Camera setup (follows player with offset)
@@ -217,6 +222,30 @@ function GameScene() {
         }
       })
 
+      // Update chests (vérifier si le joueur est dessus)
+      mapGenerator.chests.forEach(chest => {
+        if (chest.isOpened()) return // Ignorer les coffres déjà ouverts
+        
+        const isOnChest = chest.checkPlayerProximity(playerGridPos)
+        
+        if (isOnChest) {
+          // Le joueur est sur le coffre
+          if (!chest.isActivating) {
+            chest.startActivation()
+          }
+          
+          // Mettre à jour l'activation
+          const { completed, weaponDrop } = chest.update()
+          if (completed && weaponDrop) {
+            // Donner l'arme au joueur
+            player.equipWeapon(weaponDrop)
+          }
+        } else if (chest.isActivating) {
+          // Le joueur a quitté le coffre
+          chest.cancelActivation()
+        }
+      })
+
       // Update camera to follow player
       camera.position.x = player.getPosition().x
       camera.position.y = player.getPosition().y + cameraOffsetY
@@ -265,8 +294,8 @@ function GameScene() {
             if (playerRef.current) {
               playerRef.current.applyPerk(perk)
             }
-            // Fermer le menu
-            setAvailablePerks(null)
+            // NE PAS mettre null ici - applyPerk() gère l'affichage du prochain
+            // setAvailablePerks(null)
           }}
         />
       )}

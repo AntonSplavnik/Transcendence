@@ -104,12 +104,11 @@ export class Player {
   maxLife: number = 100 // Points de vie maximum
   life: number = 100 // Points de vie actuels
   attackSpeed: number = 1.0 // Vitesse d'attaque (multiplicateur, sera scalé par niveau/perks)
-  
+
   // Système de perks
   pendingPerks: Perk[] | null = null // Perks en attente de choix (null si aucun choix en cours)
-  onPerkChoiceReady: ((perks: Perk[]) => void) | null = null // Callback pour notifier GameScene
-  
-  // Barre de cooldown
+  perkQueue: Perk[][] = [] // File d'attente pour les level-ups multiples
+  onPerkChoiceReady: ((perks: Perk[]) => void) | null = null // Callback pour notifier GameScene  // Barre de cooldown
   private cooldownBarBackground!: Mesh
   private cooldownBarFill!: Mesh
   private readonly barWidth = 0.8
@@ -144,19 +143,11 @@ export class Player {
   }
 
   private initializeWeapons() {
-    // Arme de base : attaque au corps-à-corps
+    // Arme de base : seulement l'attaque au corps-à-corps (épée)
     const meleeWeapon = new MeleeWeapon(this.scene)
     this.weapons.push(meleeWeapon)
     
-    // Pour les tests : équiper l'arc directement
-    const bowWeapon = new BowWeapon(this.scene)
-    this.weapons.push(bowWeapon)
-    
-    // Pour les tests : équiper la baguette magique avec orbes
-    const orbWeapon = new OrbWeapon(this.scene)
-    this.weapons.push(orbWeapon)
-    
-    console.log(`⚔️ ${this.weapons.length} armes équipées`)
+    console.log(`⚔️ ${this.weapons.length} arme équipée (Épée de départ)`)
   }
 
   private createCooldownBar(scene: Scene) {
@@ -373,15 +364,38 @@ export class Player {
     this.levelUpTexts.push(levelUpText)
     
     // Générer 3 perks aléatoires pour le choix
-    this.pendingPerks = generateRandomPerks()
+    const newPerks = generateRandomPerks()
     
-    // Notifier GameScene qu'un choix de perk est disponible
-    if (this.onPerkChoiceReady) {
-      this.onPerkChoiceReady(this.pendingPerks)
+    // Toujours ajouter à la file d'attente
+    this.perkQueue.push(newPerks)
+    console.log(`📦 Level-up! File d'attente: ${this.perkQueue.length} choix de perks`)
+    
+    // Si aucun choix n'est en cours, afficher le premier de la file
+    if (this.pendingPerks === null) {
+      this.showNextPerkChoice()
     }
     
     // L'XP en surplus est conservée pour le prochain niveau
     // On ne reset pas l'XP à 0
+  }
+  
+  // Afficher le prochain choix de perks dans la file
+  private showNextPerkChoice() {
+    if (this.perkQueue.length > 0) {
+      this.pendingPerks = this.perkQueue.shift()!
+      console.log(`✨ Affichage du choix de perks! Restants: ${this.perkQueue.length}`)
+      
+      // Notifier GameScene
+      if (this.onPerkChoiceReady && this.pendingPerks) {
+        this.onPerkChoiceReady(this.pendingPerks)
+      }
+    } else {
+      // Plus de perks dans la file, fermer l'UI
+      this.pendingPerks = null
+      if (this.onPerkChoiceReady) {
+        this.onPerkChoiceReady([]) // Envoyer un tableau vide pour fermer l'UI
+      }
+    }
   }
 
   // Appliquer un perk choisi par le joueur
@@ -405,8 +419,9 @@ export class Player {
         break
     }
     
-    // Réinitialiser les perks en attente
+    // Réinitialiser le choix en cours et afficher le suivant
     this.pendingPerks = null
+    this.showNextPerkChoice()
   }
 
   getXP(): number {
@@ -480,6 +495,37 @@ export class Player {
   // Soigner complètement le joueur
   fullHeal() {
     this.heal(this.maxLife)
+  }
+
+  // Équiper une arme depuis un coffre
+  equipWeapon(weaponType: 'bow' | 'orb'): boolean {
+    // Vérifier si on a déjà 3 armes
+    if (this.weapons.length >= this.maxWeapons) {
+      console.log('❌ Inventaire plein ! (3 armes maximum)')
+      return false
+    }
+    
+    // Vérifier si on a déjà cette arme
+    const weaponNames = this.weapons.map(w => w.name)
+    const newWeaponName = weaponType === 'bow' ? 'Arc' : 'Baguette Magique'
+    
+    if (weaponNames.includes(newWeaponName)) {
+      console.log(`❌ Vous avez déjà l'arme: ${newWeaponName}`)
+      return false
+    }
+    
+    // Équiper la nouvelle arme
+    if (weaponType === 'bow') {
+      const bowWeapon = new BowWeapon(this.scene)
+      this.weapons.push(bowWeapon)
+      console.log('🏹 Arc équipé !')
+    } else if (weaponType === 'orb') {
+      const orbWeapon = new OrbWeapon(this.scene)
+      this.weapons.push(orbWeapon)
+      console.log('🔮 Baguette Magique équipée !')
+    }
+    
+    return true
   }
 
   dispose() {

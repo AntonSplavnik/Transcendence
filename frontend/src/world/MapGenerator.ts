@@ -155,6 +155,9 @@ export class MapGenerator {
   generateChests() {
     const numChests = Math.random() < 0.5 ? 1 : 2 // 1 ou 2 coffres
     
+    // Définir les armes disponibles dans l'ordre
+    const weaponDrops: ('bow' | 'orb')[] = ['bow', 'orb']
+    
     for (let i = 0; i < numChests; i++) {
       // Spawn les coffres dans des salles au milieu du donjon (pas la première ni la dernière)
       let position
@@ -166,9 +169,13 @@ export class MapGenerator {
         position = this.getRandomWalkablePosition()
       }
       
-      const chest = new Chest(this.scene, position.x, position.y)
+      // Assigner l'arme selon l'index pour garantir pas de doublon
+      const weaponDrop = weaponDrops[i % weaponDrops.length]
+      const chest = new Chest(this.scene, position.x, position.y, weaponDrop)
       this.chests.push(chest)
-      console.log(`📦 Coffre spawné à (${position.x}, ${position.y})`)
+      
+      const weaponName = weaponDrop === 'bow' ? 'Arc' : 'Baguette Magique'
+      console.log(`📦 Coffre spawné à (${position.x}, ${position.y}) - Contient: ${weaponName}`)
     }
   }
 
