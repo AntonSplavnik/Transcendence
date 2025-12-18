@@ -5,6 +5,8 @@ use salvo::routing::MethodFilter;
 use crate::prelude::*;
 
 pub mod users;
+pub mod game;
+pub mod profile;
 
 const OPENAPI_JSON: &str = "/api-doc/openapi.json";
 
@@ -16,6 +18,8 @@ pub fn root() -> Router {
             crate::auth::router("auth"),
             crate::auth::user_router("user"),
             users::router("users"),
+            game::router("game"),
+            profile::router("profile"),
         ]);
     // TODO test whether allowing only CONNECT is sufficient
     let wt_route = Router::with_path("api/wt")
@@ -26,12 +30,19 @@ pub fn root() -> Router {
         .goal(crate::stream::connect_stream);
     let api_routes = Router::new().push(api_routes).push(wt_route);
     let doc = openapi_doc(&api_routes);
-    let router = Router::new().push(api_routes).push(
-        Router::with_path("{*path}").get(
-            StaticDir::new(&crate::config::get().serve_dir)
-                .defaults("index.html"),
-        ),
-    );
+    
+    let avatars_route = Router::with_path("avatars/{*path}")
+        .get(StaticDir::new(&crate::config::get().avatars_dir));
+    
+    let router = Router::new()
+        .push(avatars_route)
+        .push(api_routes)
+        .push(
+            Router::with_path("{*path}").get(
+                StaticDir::new(&crate::config::get().serve_dir)
+                    .defaults("index.html"),
+            ),
+        );
     router
         .unshift(doc.into_router(OPENAPI_JSON))
         .unshift(Scalar::new(OPENAPI_JSON).into_router("scalar"))

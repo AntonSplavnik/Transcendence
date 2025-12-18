@@ -64,6 +64,7 @@ fn register(
         totp_confirmed_at: None,
         password_hash: util::hash_password(&input.password)?,
         created_at: chrono::Utc::now().naive_utc(),
+        avatar_url: None,
     };
     let conn = &mut db::get()?;
     // FIXME (not planned yet) account email enumeration vulnerability (need email confirmation flow)
@@ -72,7 +73,7 @@ fn register(
         .get_result(conn)?;
 
     let session = create_session(conn, user.id, req, depot, res)?;
-    json_ok(UserSessionInfo::new(user, session))
+    json_ok(UserSessionInfo::with_stats(conn, user, session)?)
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -123,7 +124,7 @@ fn login(
         Err(err) => return Err(err.into()),
     };
 
-    json_ok(UserSessionInfo::new(user, session))
+    json_ok(UserSessionInfo::with_stats(conn, user, session)?)
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

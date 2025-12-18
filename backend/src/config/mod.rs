@@ -53,6 +53,8 @@ pub struct ServerConfig {
     pub tls: Option<TlsConfig>,
     #[serde(default = "default_serve_dir")]
     pub serve_dir: String,
+    #[serde(default = "default_avatars_dir")]
+    pub avatars_dir: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -75,4 +77,8 @@ fn default_listen_https_port() -> u16 {
 
 fn default_serve_dir() -> String {
     "/www".into()
+}
+
+fn default_avatars_dir() -> String {
+    "static/avatars".into()
 }

@@ -21,6 +21,7 @@ pub struct User {
     #[serde(skip)]
     pub password_hash: String,
     pub created_at: NaiveDateTime,
+    pub avatar_url: Option<String>,
 }
 
 #[apply(NewInsertable!)]
@@ -100,4 +101,49 @@ impl NewSession {
             last_authenticated_at: now,
         }
     }
+}
+
+#[apply(NewInsertable!)]
+#[derive(Queryable, Selectable, Associations, ToSchema, Serialize, Debug, Clone)]
+#[diesel(table_name = crate::schema::user_stats)]
+#[diesel(belongs_to(User))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct UserStats {
+    pub id: i32,
+    pub user_id: i32,
+    pub games_played: i32,
+    pub total_kills: i32,
+    pub total_time_played: i32,
+    pub last_game_kills: i32,
+    pub last_game_time: i32,
+    pub last_game_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(AsChangeset, Debug)]
+#[diesel(table_name = crate::schema::user_stats)]
+pub struct UpdateUserStats {
+    pub games_played: Option<i32>,
+    pub total_kills: Option<i32>,
+    pub total_time_played: Option<i32>,
+    pub last_game_kills: Option<i32>,
+    pub last_game_time: Option<i32>,
+    pub last_game_at: Option<NaiveDateTime>,
+    pub updated_at: NaiveDateTime,
+}
+
+// ===== GAME HISTORY MODELS =====
+
+#[apply(NewInsertable!)]
+#[derive(Queryable, Selectable, Associations, ToSchema, Serialize, Debug, Clone)]
+#[diesel(table_name = crate::schema::game_history)]
+#[diesel(belongs_to(User))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct GameHistory {
+    pub id: i32,
+    pub user_id: i32,
+    pub kills: i32,
+    pub time_played: i32,
+    pub played_at: NaiveDateTime,
 }

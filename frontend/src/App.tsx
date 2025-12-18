@@ -40,7 +40,7 @@ function App() {
 	}, []);
 
 	return (
-		<Layout>
+		<Layout isAuthenticated={isAuthenticated} onLogin={goAuth}>
 			{view === "landing" && (
 				<LandingPage
 					onLogin={goAuth}
@@ -69,7 +69,7 @@ function App() {
 					onLeave={isAuthenticated ? goHome : goLanding}  // Return to appropriate screen
 				/>
 			)}
-		</Layout>
+	</Layout>
 	);
 }
 

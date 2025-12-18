@@ -37,6 +37,7 @@ pub fn router(path: &str) -> Router {
 pub struct UserSessionInfo {
     pub user: User,
     pub session: SessionInfo,
+    pub stats: Option<crate::models::UserStats>,
 }
 
 impl UserSessionInfo {
@@ -44,7 +45,24 @@ impl UserSessionInfo {
         Self {
             user,
             session: SessionInfo::from(session),
+            stats: None,
         }
+    }
+    
+    pub fn with_stats(conn: &mut db::DbConn, user: User, session: Session) -> AppResult<Self> {
+        use crate::schema::user_stats;
+        
+        // Fetch user stats from database
+        let stats = user_stats::table
+            .filter(user_stats::user_id.eq(user.id))
+            .first::<crate::models::UserStats>(conn)
+            .optional()?;
+        
+        Ok(Self {
+            user,
+            session: SessionInfo::from(session),
+            stats,
+        })
     }
 
     pub fn from_session(
@@ -52,11 +70,20 @@ impl UserSessionInfo {
         session: Session,
     ) -> AppResult<Self> {
         use crate::schema::users::dsl::*;
+        use crate::schema::user_stats;
+        
         let user: User = users.filter(id.eq(session.user_id)).first(conn)?;
+        
+        // Fetch user stats from database
+        let stats = user_stats::table
+            .filter(user_stats::user_id.eq(session.user_id))
+            .first::<crate::models::UserStats>(conn)
+            .optional()?;
 
         Ok(Self {
             user,
             session: SessionInfo::from(session),
+            stats,
         })
     }
 }

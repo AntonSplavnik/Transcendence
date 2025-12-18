@@ -1,6 +1,16 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    game_history (id) {
+        id -> Integer,
+        user_id -> Integer,
+        kills -> Integer,
+        time_played -> Integer,
+        played_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     sessions (id) {
         id -> Integer,
         user_id -> Integer,
@@ -26,6 +36,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_stats (id) {
+        id -> Integer,
+        user_id -> Integer,
+        games_played -> Integer,
+        total_kills -> Integer,
+        total_time_played -> Integer,
+        last_game_kills -> Integer,
+        last_game_time -> Integer,
+        last_game_at -> Nullable<Timestamp>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Integer,
         email -> Text,
@@ -35,10 +60,19 @@ diesel::table! {
         totp_confirmed_at -> Nullable<Timestamp>,
         password_hash -> Text,
         created_at -> Timestamp,
+        avatar_url -> Nullable<Text>,
     }
 }
 
+diesel::joinable!(game_history -> users (user_id));
 diesel::joinable!(sessions -> users (user_id));
 diesel::joinable!(two_fa_recovery_codes -> users (user_id));
+diesel::joinable!(user_stats -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(sessions, two_fa_recovery_codes, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    game_history,
+    sessions,
+    two_fa_recovery_codes,
+    user_stats,
+    users,
+);
