@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Static uploads
+static/avatars/*.png
+static/avatars/*.jpg
+static/avatars/*.jpeg
+static/avatars/*.gif
+static/avatars/*.webp
+!static/avatars/.gitkeep
