@@ -1,6 +1,17 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    friendships (id) {
+        id -> Integer,
+        from_user_id -> Integer,
+        to_user_id -> Integer,
+        status -> Text,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     game_history (id) {
         id -> Integer,
         user_id -> Integer,
@@ -61,15 +72,19 @@ diesel::table! {
         password_hash -> Text,
         created_at -> Timestamp,
         avatar_url -> Nullable<Text>,
+        is_online -> Bool,
+        last_seen -> Nullable<Timestamp>,
     }
 }
 
+diesel::joinable!(friendships -> users (from_user_id));
 diesel::joinable!(game_history -> users (user_id));
 diesel::joinable!(sessions -> users (user_id));
 diesel::joinable!(two_fa_recovery_codes -> users (user_id));
 diesel::joinable!(user_stats -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    friendships,
     game_history,
     sessions,
     two_fa_recovery_codes,

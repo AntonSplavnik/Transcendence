@@ -7,6 +7,7 @@ use crate::prelude::*;
 pub mod users;
 pub mod game;
 pub mod profile;
+pub mod friends;
 
 const OPENAPI_JSON: &str = "/api-doc/openapi.json";
 
@@ -20,6 +21,7 @@ pub fn root() -> Router {
             users::router("users"),
             game::router("game"),
             profile::router("profile"),
+            friends::router("friends"),
         ]);
     // TODO test whether allowing only CONNECT is sufficient
     let wt_route = Router::with_path("api/wt")
@@ -30,7 +32,7 @@ pub fn root() -> Router {
         .goal(crate::stream::connect_stream);
     let api_routes = Router::new().push(api_routes).push(wt_route);
     let doc = openapi_doc(&api_routes);
-    
+
     let avatars_route = Router::with_path("avatars/{*path}")
         .get(StaticDir::new(&crate::config::get().avatars_dir));
     

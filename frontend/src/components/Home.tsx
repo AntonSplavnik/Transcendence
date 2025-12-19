@@ -3,6 +3,7 @@ import PlayerProfile from "./PlayerProfile";
 import PlayerStats from "./PlayerStats";
 import GameHistory from "./GameHistory";
 import GameActions from "./GameActions";
+import FriendsPanel from "./FriendsPanel";
 
 interface UserStats {
 	games_played: number;
@@ -125,7 +126,7 @@ export default function Home({ onLocal, onLogout, onOnline }: { onLocal: () => v
 	}
 
 	return (
-		<main className="p-6 max-w-4xl mx-auto w-full">
+		<main className="p-6 max-w-6xl mx-auto w-full">
 			<PlayerProfile 
 				user={user} 
 				onLogout={handleLogout}
@@ -139,15 +140,22 @@ export default function Home({ onLocal, onLogout, onOnline }: { onLocal: () => v
 				</div>
 			)}
 
-			<section className="grid gap-6 md:grid-cols-2 mb-8">
-				<GameActions 
-					onLocal={onLocal} 
-					onOnline={onOnline} 
-				/>
-				<GameHistory history={history} />
-			</section>
+			<div className="grid gap-6 lg:grid-cols-3 mb-8">
+				{/* Left column: Game actions and history */}
+				<div className="lg:col-span-2 space-y-6">
+					<GameActions 
+						onLocal={onLocal} 
+						onOnline={onOnline} 
+					/>
+					<GameHistory history={history} />
+					<PlayerStats stats={user.stats} />
+				</div>
 
-			<PlayerStats stats={user.stats} />
+				{/* Right column: Friends panel */}
+				<div className="lg:col-span-1">
+					<FriendsPanel />
+				</div>
+			</div>
 		</main>
 	);
 }

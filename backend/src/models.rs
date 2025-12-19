@@ -22,6 +22,8 @@ pub struct User {
     pub password_hash: String,
     pub created_at: NaiveDateTime,
     pub avatar_url: Option<String>,
+    pub is_online: bool,
+    pub last_seen: Option<NaiveDateTime>,
 }
 
 #[apply(NewInsertable!)]
@@ -146,4 +148,27 @@ pub struct GameHistory {
     pub kills: i32,
     pub time_played: i32,
     pub played_at: NaiveDateTime,
+}
+
+// ===== FRIENDSHIP MODELS =====
+
+#[apply(NewInsertable!)]
+#[derive(Queryable, Selectable, Associations, ToSchema, Serialize, Debug, Clone)]
+#[diesel(table_name = crate::schema::friendships)]
+#[diesel(belongs_to(User, foreign_key = from_user_id))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct Friendship {
+    pub id: i32,
+    pub from_user_id: i32,
+    pub to_user_id: i32,
+    pub status: String,  // "pending", "accepted", "declined", "blocked"
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(AsChangeset, Debug)]
+#[diesel(table_name = crate::schema::friendships)]
+pub struct UpdateFriendship {
+    pub status: Option<String>,
+    pub updated_at: NaiveDateTime,
 }

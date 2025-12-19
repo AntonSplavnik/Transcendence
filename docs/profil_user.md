@@ -4,10 +4,10 @@
 
 ### Requirements (Major Module)
 **Standard user management and authentication:**
-- ✅ Users can update their profile information
-- ✅ Users can upload an avatar (with a default avatar if none provided)
-- ⏳ Users can add other users as friends and see their online status
-- ✅ Users have a profile page displaying their information
+- Users can update their profile information
+- Users can upload an avatar (with a default avatar if none provided)
+- Users can add other users as friends and see their online status
+- Users have a profile page displaying their information
 
 ---
 
@@ -188,16 +188,6 @@ frontend/
 │   └── contexts/
 │       └── AuthContext.tsx        # User context (avatar_url)
 ```
-
----
-
-### Frontend
-- ✅ Avatar displays correctly
-- ✅ Initials with color if no avatar
-- ✅ Upload via ProfileEdit modal
-- ✅ Current avatar preview
-- ✅ Context update after upload
-
 ---
 
 ## Next Steps

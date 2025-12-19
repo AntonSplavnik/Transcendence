@@ -1,4 +1,5 @@
 use diesel::OptionalExtension;
+use serde::Serialize;
 
 use crate::auth::AuthError;
 use crate::auth::hoops::set_session;
@@ -6,8 +7,33 @@ use crate::auth::session_token::SessionToken;
 use crate::auth::user::{SessionInfo, UserSessionInfo};
 use crate::models::{NewSession, NewUser, Session, User};
 use crate::prelude::*;
+use crate::schema::users;
 
 use super::util;
+
+/// Set user online status to true and update last_seen timestamp
+fn set_user_online(conn: &mut db::DbConn, user_id: i32) -> AppResult<()> {
+    let now = chrono::Utc::now().naive_utc();
+    diesel::update(users::table.find(user_id))
+        .set((
+            users::is_online.eq(true),
+            users::last_seen.eq(now),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Set user online status to false and update last_seen timestamp
+fn set_user_offline(conn: &mut db::DbConn, user_id: i32) -> AppResult<()> {
+    let now = chrono::Utc::now().naive_utc();
+    diesel::update(users::table.find(user_id))
+        .set((
+            users::is_online.eq(false),
+            users::last_seen.eq(now),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
 
 pub fn router(path: &str) -> Router {
     Router::with_path(path).oapi_tag("auth").append(&mut vec![
@@ -18,6 +44,9 @@ pub fn router(path: &str) -> Router {
         Router::with_path("login")
             .ip_rate_limit(&RateLimit::per_minute(10))
             .post(login),
+        Router::with_path("logout")
+            .requires_user_login()
+            .post(logout),
         // Session Cookie is limited to this path
         Router::with_path("session-management")
             .push(
@@ -65,12 +94,17 @@ fn register(
         password_hash: util::hash_password(&input.password)?,
         created_at: chrono::Utc::now().naive_utc(),
         avatar_url: None,
+        is_online: false,
+        last_seen: None,
     };
     let conn = &mut db::get()?;
     // FIXME (not planned yet) account email enumeration vulnerability (need email confirmation flow)
     let user: User = diesel::insert_into(users)
         .values(&new_user)
         .get_result(conn)?;
+
+    // Set user online
+    set_user_online(conn, user.id)?;
 
     let session = create_session(conn, user.id, req, depot, res)?;
     json_ok(UserSessionInfo::with_stats(conn, user, session)?)
@@ -111,6 +145,9 @@ fn login(
         mfa_code.as_deref(),
     )?;
 
+    // Set user online
+    set_user_online(conn, user.id)?;
+
     let session = match sessions
         .filter(user_id.eq(user.id))
         .filter(device_id.eq(depot.device_id()))
@@ -125,6 +162,35 @@ fn login(
     };
 
     json_ok(UserSessionInfo::with_stats(conn, user, session)?)
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LogoutResponse {
+    pub success: bool,
+}
+
+/// Logout the current user and invalidate session
+///
+/// Sets user status to offline and clears authentication cookies
+#[endpoint(
+    tags("auth"),
+    responses(
+        (status_code = 200, description = "Logged out successfully", body = LogoutResponse),
+        (status_code = 401, description = "Unauthorized - User not authenticated"),
+    )
+)]
+fn logout(depot: &mut Depot, res: &mut Response) -> JsonResult<LogoutResponse> {
+    let user_id = depot.user_id();
+    let conn = &mut db::get()?;
+
+    // Set user offline
+    set_user_offline(conn, user_id)?;
+
+    // Clear authentication cookies
+    res.remove_cookie(super::SESSION_COOKIE_NAME);
+    res.remove_cookie(super::JWT_COOKIE_NAME);
+
+    json_ok(LogoutResponse { success: true })
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -171,6 +237,12 @@ fn refresh_jwt(
 ) -> JsonResult<SessionInfo> {
     let conn = &mut db::get()?;
     let session = depot.session();
+
+    // Update last_seen on JWT refresh
+    let now = chrono::Utc::now().naive_utc();
+    diesel::update(users::table.find(session.user_id))
+        .set(users::last_seen.eq(now))
+        .execute(conn)?;
 
     json_ok(rotate_session::<false>(conn, session, req, depot, res)?.into())
 }
