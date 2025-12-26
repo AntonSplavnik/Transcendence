@@ -7,13 +7,17 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "frontend": "npm run dev",
+    "backend": "cd ../backend && cargo run",
+    "all": "npx concurrently \"npm run frontend\" \"npm run backend\""
   },
   "dependencies": {
     "@babylonjs/core": "^8.40.1",
     "@babylonjs/inspector": "^8.40.1",
     "@babylonjs/loaders": "^8.40.1",
     "autoprefixer": "^10.4.22",
+    "axios": "^1.13.2",
     "lucide-react": "^0.556.0",
     "postcss": "^8.5.6",
     "react": "^19.2.0",

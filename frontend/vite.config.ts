@@ -6,13 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxier toutes les requêtes /api vers le backend
       '/api': {
         target: 'https://127.0.0.1:8443',
         changeOrigin: true,
-        secure: false, // Accepter les certificats SSL auto-signés
+        secure: false,
       },
-      // Proxier toutes les requêtes /avatars vers le backend
+      // DELETE THIS LATER, I did some test with npm
       '/avatars': {
         target: 'https://127.0.0.1:8443',
         changeOrigin: true,

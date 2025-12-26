@@ -1,15 +1,12 @@
 /target
 /migration/target
 
-*.sqlite
-*.sqlite3
 *.sqlite-shm
 *.sqlite-wal
 *.db
 *.db-shm
 *.db-wal
 
-/data/*.sqlite
 /data/*.sqlite-shm
 /data/*.sqlite-wal
 
