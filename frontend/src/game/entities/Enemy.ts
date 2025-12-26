@@ -80,6 +80,10 @@ export class Enemy {
   scene: Scene // Stocker la scène pour créer les damage texts
   damageTexts: DamageText[] = [] // Liste des textes de dégâts actifs
   
+  // Séparation entre ennemis (éviter qu'ils se superposent)
+  private readonly separationRadius: number = 0.3 // Rayon de séparation en unités monde
+  private readonly separationStrength: number = 0.03 // Force de la séparation
+  
   // Système d'attaque
   lastAttackTime: number = Date.now()
   attackCooldown: number = 5000 // 5 secondes en millisecondes
@@ -178,10 +182,13 @@ export class Enemy {
     this.updateHealthBarPosition()
   }
 
-  update(playerPosition: Vector3, mapGenerator?: MapGenerator) {
+  update(playerPosition: Vector3, mapGenerator?: MapGenerator, otherEnemies?: Enemy[]) {
     if (!mapGenerator) {
       // Fallback: comportement simple sans pathfinding
       this.simpleMovement(playerPosition)
+      if (otherEnemies) {
+        this.applySeparation(otherEnemies)
+      }
       this.updateHealthBar()
       this.updateDamageTexts()
       return
@@ -223,6 +230,11 @@ export class Enemy {
     } else {
       // Pas de chemin, on essaie le mouvement simple
       this.simpleMovement(playerPosition)
+    }
+
+    // Appliquer la séparation avec les autres ennemis
+    if (otherEnemies) {
+      this.applySeparation(otherEnemies)
     }
 
     // Update health bar position and damage texts
@@ -268,6 +280,43 @@ export class Enemy {
       this.mesh.position.x += (dx / distance) * this.speed
       this.mesh.position.z += (dz / distance) * this.speed
 
+      const grid = worldToGrid(this.mesh.position)
+      this.gridPos.x = grid.x
+      this.gridPos.y = grid.y
+    }
+  }
+
+  /**
+   * Applique une force de séparation pour éviter que les ennemis se superposent
+   * Crée un effet de "nuée" où chaque ennemi maintient une distance minimale avec ses voisins
+   */
+  private applySeparation(otherEnemies: Enemy[]) {
+    let separationX = 0
+    let separationZ = 0
+
+    for (const other of otherEnemies) {
+      // Ignorer soi-même
+      if (other === this) continue
+
+      const dx = this.mesh.position.x - other.mesh.position.x
+      const dz = this.mesh.position.z - other.mesh.position.z
+      const distance = Math.sqrt(dx * dx + dz * dz)
+
+      // Si un autre ennemi est dans le rayon de séparation
+      if (distance < this.separationRadius && distance > 0) {
+        // Force de répulsion inversement proportionnelle à la distance
+        const force = (1 - distance / this.separationRadius) * this.separationStrength
+        separationX += (dx / distance) * force
+        separationZ += (dz / distance) * force
+      }
+    }
+
+    // Appliquer la séparation accumulée
+    this.mesh.position.x += separationX
+    this.mesh.position.z += separationZ
+
+    // Mettre à jour la position de grille après séparation
+    if (separationX !== 0 || separationZ !== 0) {
       const grid = worldToGrid(this.mesh.position)
       this.gridPos.x = grid.x
       this.gridPos.y = grid.y

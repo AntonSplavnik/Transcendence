@@ -187,7 +187,7 @@ function GameScene({ onLeave }: GameSceneProps) {
 
       // Update enemies (AI with wall collision)
       enemies.forEach(enemy => {
-        enemy.update(player.getPosition(), mapGenerator)
+        enemy.update(player.getPosition(), mapGenerator, enemies)
         
         // Les ennemis attaquent le joueur au corps à corps
         enemy.tryAttackPlayer(player.getPosition(), (damage) => {

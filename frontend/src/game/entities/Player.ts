@@ -143,11 +143,11 @@ export class Player {
   }
 
   private initializeWeapons() {
-    // Arme de base : seulement l'attaque au corps-à-corps (épée)
-    const meleeWeapon = new MeleeWeapon(this.scene)
-    this.weapons.push(meleeWeapon)
+    // Arme de base : Arc (attaque à distance)
+    const bowWeapon = new BowWeapon(this.scene)
+    this.weapons.push(bowWeapon)
     
-    console.log(`⚔️ ${this.weapons.length} arme équipée (Épée de départ)`)
+    console.log(`🏹 ${this.weapons.length} arme équipée (Arc de départ)`)
   }
 
   private createCooldownBar(scene: Scene) {
@@ -498,7 +498,7 @@ export class Player {
   }
 
   // Équiper une arme depuis un coffre
-  equipWeapon(weaponType: 'bow' | 'orb'): boolean {
+  equipWeapon(weaponType: 'melee' | 'orb'): boolean {
     // Vérifier si on a déjà 3 armes
     if (this.weapons.length >= this.maxWeapons) {
       console.log('❌ Inventaire plein ! (3 armes maximum)')
@@ -507,7 +507,7 @@ export class Player {
     
     // Vérifier si on a déjà cette arme
     const weaponNames = this.weapons.map(w => w.name)
-    const newWeaponName = weaponType === 'bow' ? 'Arc' : 'Baguette Magique'
+    const newWeaponName = weaponType === 'melee' ? 'Épée' : 'Baguette Magique'
     
     if (weaponNames.includes(newWeaponName)) {
       console.log(`❌ Vous avez déjà l'arme: ${newWeaponName}`)
@@ -515,10 +515,10 @@ export class Player {
     }
     
     // Équiper la nouvelle arme
-    if (weaponType === 'bow') {
-      const bowWeapon = new BowWeapon(this.scene)
-      this.weapons.push(bowWeapon)
-      console.log('🏹 Arc équipé !')
+    if (weaponType === 'melee') {
+      const meleeWeapon = new MeleeWeapon(this.scene)
+      this.weapons.push(meleeWeapon)
+      console.log('⚔️ Épée équipée !')
     } else if (weaponType === 'orb') {
       const orbWeapon = new OrbWeapon(this.scene)
       this.weapons.push(orbWeapon)

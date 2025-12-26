@@ -1,7 +1,7 @@
 import { Scene, MeshBuilder, StandardMaterial, Mesh, Texture, Color3, Vector3 } from '@babylonjs/core'
 import { gridToWorld } from '../utils/grid'
 
-export type WeaponDrop = 'bow' | 'orb'
+export type WeaponDrop = 'melee' | 'orb'
 
 export class Chest {
   mesh: Mesh
@@ -18,7 +18,7 @@ export class Chest {
     this.gridPos = { x: gridX, y: gridY }
     
     // Utiliser l'arme fournie ou en déterminer une aléatoirement
-    this.weaponDrop = weaponDrop ?? (Math.random() < 0.5 ? 'bow' : 'orb')
+    this.weaponDrop = weaponDrop ?? (Math.random() < 0.5 ? 'melee' : 'orb')
     
     // Create mesh - using a plane for 2D sprite
     this.mesh = MeshBuilder.CreatePlane(`chest_${Math.random()}`, { size: 0.7 }, scene)
@@ -116,7 +116,7 @@ export class Chest {
       // Cacher le cercle d'activation
       this.activationCircle.isVisible = false
       
-      const weaponName = this.weaponDrop === 'bow' ? 'Arc' : 'Baguette Magique'
+      const weaponName = this.weaponDrop === 'melee' ? 'Épée' : 'Baguette Magique'
       console.log(`✅ Coffre ouvert ! Arme obtenue: ${weaponName}`)
       return { completed: true, progress: 1.0, weaponDrop: this.weaponDrop }
     }
