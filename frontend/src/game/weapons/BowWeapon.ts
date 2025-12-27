@@ -3,6 +3,7 @@ import { Weapon } from './Weapon'
 import { Projectile } from './Projectile'
 import type { Player } from '../entities/Player'
 import type { Enemy } from '../entities/Enemy'
+import { getSoundManager } from '../audio/SoundManager'
 
 export class BowWeapon extends Weapon {
   private projectiles: Projectile[] = []
@@ -48,6 +49,8 @@ export class BowWeapon extends Weapon {
     if (closestEnemy) {
       this.lastAttackTime = currentTime
       const damage = this.calculateDamage(player)
+      
+      getSoundManager().play('arrow-shoot', 0.1);
       
       // Créer un projectile vers la cible
       const startPos = player.mesh.position.clone()

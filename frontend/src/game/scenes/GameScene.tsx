@@ -6,6 +6,7 @@ import { MapGenerator } from '../world/MapGenerator'
 import PerkChoice from '../components/PerkChoice'
 import { WeaponHUD } from '../components/WeaponHUD'
 import type { Perk } from '../systems/PerkSystem'
+import { initGameSounds } from '../audio/SoundManager'
 
 interface GameSceneProps {
   onLeave?: (kills: number) => void
@@ -47,8 +48,8 @@ function GameScene({ onLeave }: GameSceneProps) {
   useEffect(() => {
     if (!canvasRef.current) return
 
-    // Initialiser le temps de départ
     setGameStartTime(Date.now())
+    initGameSounds();
 
     // Create Babylon engine and scene
     const engine = new Engine(canvasRef.current, true)
