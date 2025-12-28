@@ -26,7 +26,12 @@ pub fn root() -> Router {
         .goal(crate::stream::connect_stream);
     let api_routes = Router::new().push(api_routes).push(wt_route);
     let doc = openapi_doc(&api_routes);
-    let router = Router::new().push(api_routes);
+    let router = Router::new().push(api_routes).push(
+        Router::with_path("{*path}").get(
+            StaticDir::new(&crate::config::get().serve_dir)
+                .defaults("index.html"),
+        ),
+    );
     router
         .unshift(doc.into_router(OPENAPI_JSON))
         .unshift(Scalar::new(OPENAPI_JSON).into_router("scalar"))
