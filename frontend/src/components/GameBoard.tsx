@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import GameScene from "../game/scenes/GameScene";
+import BabylonCanvas from "./GameBoard/BabylonCanvas";
 import Button from "./ui/Button";
 
 export default function GameBoard({ mode, onLeave }: { mode: "local" | "online"; onLeave: () => void }) {
@@ -91,7 +91,7 @@ export default function GameBoard({ mode, onLeave }: { mode: "local" | "online";
 
       {/* 3D Canvas Area */}
       <div className="flex-grow bg-black relative">
-        <GameScene onLeave={handleGameEnd} />
+        <BabylonCanvas />
       </div>
     </div>
   );
